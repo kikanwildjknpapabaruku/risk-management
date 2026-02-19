@@ -449,7 +449,7 @@ const App = () => {
                     </div>
                     
                     <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight text-center mb-2">
-                        Risk Intelligence
+                        Risk Management DJKN Papabaruku
                     </h1>
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-8">
                         Restricted Access Area
@@ -552,7 +552,7 @@ const App = () => {
                 <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase">Dashboard Matriks Risiko</h1>
                 <p className="text-sm text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full animate-pulse no-print ${isLoading ? 'bg-yellow-400' : 'bg-green-500'}`}></span>
-                  ISO 31000 Kualitatif 5x5 - {selectedPeriod}
+                  PERIODE RISIKO - {selectedPeriod}
                 </p>
               </div>
             </div>
@@ -994,7 +994,7 @@ const App = () => {
         )}
       </Modal>
 
-      <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">Enterprise Risk Intelligence System v2.1</div>
+      <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">Seksi Kepatuhan Internal DJKN Papabaruku v1</div>
     </div>
   );
 };
