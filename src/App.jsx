@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 // --- KONFIGURASI API ---
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGR4Mnd3BISeX0IyD_tfuzEycuvHl7R5tyD205tT8yjEY4DrMmYHNSI6XQgouck5712g/exec";
 
+// --- KONSTANTA TOKEN ---
+const STATIC_TOKEN = "kanwilDJKN#17";
+
 // --- KOMPONEN IKON SVG INLINE ---
 const IconAlertCircle = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -40,6 +43,15 @@ const IconCloudUpload = () => (
 const IconLoader = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
 );
+const IconLock = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+);
+const IconLogOut = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+);
+const IconFilter = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+);
 
 // --- KONSTANTA DATA ---
 const riskData = [
@@ -64,6 +76,41 @@ const riskData = [
   { id: 19, text: "Ownership pegawai terhadap organisasi" },
   { id: 20, text: "Laporan Kinerja dan Risiko disampaikan terlambat/tidak sesuai ketentuan" }
 ];
+
+// --- DATA BESARAN RISIKO AWAL (PY) DAN RESIDUAL HARAPAN ---
+const initialRiskValues = {
+  1: { py: 6, res: 5 },
+  2: { py: 16, res: 10 },
+  3: { py: 13, res: 5 },
+  4: { py: 10, res: 5 },
+  5: { py: 6, res: 2 },
+  6: { py: 9, res: 8 },
+  7: { py: 14, res: 11 },
+  8: { py: 8, res: 5 },
+  9: { py: 13, res: 10 },
+  10: { py: 13, res: 6 },
+  11: { py: 9, res: 12 },
+  12: { py: 14, res: 11 },
+  13: { py: 11, res: 5 },
+  14: { py: 11, res: 5 },
+  15: { py: 11, res: 5 },
+  16: { py: 11, res: 5 },
+  17: { py: 5, res: 1 },
+  18: { py: 16, res: 10 },
+  19: { py: 18, res: 11 },
+  20: { py: 8, res: 5 }
+};
+
+// --- KONSTANTA FILTER BIDANG ---
+const bidangFilters = {
+  "Semua Bidang": [],
+  "Bagian Umum": [1, 13, 14, 15, 20],
+  "Bidang Pengelolaan Kekayaan Negara": [1, 2, 3, 4, 8, 9],
+  "Bidang Lelang": [1, 7, 12],
+  "Bidang Penilaian": [1, 5, 11],
+  "Bidang Piutang Negara": [1, 4, 6, 10],
+  "Bidang Kepatuhan Internal, Hukum, dan Informasi": [1, 16, 17, 18, 19, 20]
+};
 
 const periods = ["TW I", "TW II", "TW III", "TW IV"];
 const levels = [5, 4, 3, 2, 1];
@@ -131,20 +178,28 @@ const getCellColor = (l, i) => {
 
 // --- KOMPONEN PEMBANTU ---
 
-const RiskMarker = ({ id, onDragStart }) => (
-  <div
-    draggable
-    onDragStart={(e) => onDragStart ? onDragStart(e, id) : null}
-    className="relative w-9 h-9 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:scale-125 z-30 drop-shadow-md group shrink-0 marker-icon"
-  >
-    <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-sm shadow-black/50 shadow-sm border border-slate-700"></div>
-    <div className="absolute inset-0 bg-slate-900 rotate-0 rounded-sm border border-slate-700"></div>
-    <span className="relative text-white font-bold text-[11px] select-none">{id}</span>
-    <div className="absolute -top-10 scale-0 group-hover:scale-100 bg-slate-800 text-white text-[9px] px-2 py-1 rounded transition-all whitespace-nowrap pointer-events-none z-50 no-print">
-      Risiko #{id}
+const RiskMarker = ({ id, text, onDragStart }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart ? onDragStart(e, id) : null}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative w-9 h-9 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:scale-125 z-30 drop-shadow-md shrink-0 marker-icon"
+    >
+      <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-sm shadow-black/50 shadow-sm border border-slate-700"></div>
+      <div className="absolute inset-0 bg-slate-900 rotate-0 rounded-sm border border-slate-700"></div>
+      <span className="relative text-white font-bold text-[11px] select-none">{id}</span>
+      
+      {/* Tooltip dengan state lokal - hanya muncul jika item ini dihover */}
+      <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-3 py-2 rounded-lg shadow-xl transition-all pointer-events-none z-[100] no-print w-48 text-center leading-snug border border-slate-600 ${isHovered ? 'scale-100' : 'scale-0'}`}>
+        {text || `Risiko #${id}`}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -168,7 +223,12 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 // --- KOMPONEN UTAMA ---
 
 const App = () => {
+  // --- STATE AUTH ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+
   const [selectedPeriod, setSelectedPeriod] = useState("TW I");
+  const [selectedBidang, setSelectedBidang] = useState("Semua Bidang"); // State baru untuk filter bidang
   const [isLikelihoodModalOpen, setLikelihoodModalOpen] = useState(false);
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
   const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
@@ -207,6 +267,9 @@ const App = () => {
   // 1. Fetch data on load
   useEffect(() => {
     const fetchData = async () => {
+      // Hanya fetch data jika sudah login
+      if (!isAuthenticated) return;
+
       setIsLoading(true);
       try {
         const response = await fetch(GOOGLE_SCRIPT_URL);
@@ -229,7 +292,7 @@ const App = () => {
     };
 
     fetchData();
-  }, []);
+  }, [isAuthenticated]); // Dependency berubah ke isAuthenticated agar load data setelah login
 
   // 2. Save data function
   const handleSaveToCloud = async () => {
@@ -354,6 +417,81 @@ const App = () => {
     });
   };
 
+  // --- HANDLER LOGIN ---
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (tokenInput === STATIC_TOKEN) {
+        setIsAuthenticated(true);
+        setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
+        setTimeout(() => setNotification(null), 3000);
+    } else {
+        setNotification({ type: 'error', message: 'Token Salah! Akses Ditolak.' });
+        setTimeout(() => setNotification(null), 3000);
+        setTokenInput("");
+    }
+  };
+
+  // --- HALAMAN LOGIN (JIKA BELUM AUTH) ---
+  if (!isAuthenticated) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
+             {/* NOTIFICATION TOAST LOGIN */}
+            {notification && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                    <div className="font-bold">{notification.message}</div>
+                </div>
+            )}
+
+            <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200">
+                <div className="p-10 flex flex-col items-center">
+                    <div className="p-5 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6 flex items-center justify-center">
+                        <div className="w-10 h-10 text-white"><IconLock /></div>
+                    </div>
+                    
+                    <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight text-center mb-2">
+                        Risk Intelligence
+                    </h1>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-8">
+                        Restricted Access Area
+                    </p>
+
+                    <form onSubmit={handleLogin} className="w-full space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-2">
+                                Masukkan Token Akses
+                            </label>
+                            <div className="relative">
+                                <input 
+                                    type="password" 
+                                    value={tokenInput}
+                                    onChange={(e) => setTokenInput(e.target.value)}
+                                    placeholder="••••••••••••"
+                                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-center font-bold tracking-[0.3em] text-indigo-900 placeholder:tracking-normal transition-all"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        <button 
+                            type="submit"
+                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] mt-4"
+                        >
+                            Masuk Aplikasi
+                        </button>
+                    </form>
+
+                    <div className="mt-8 pt-6 border-t border-slate-100 w-full text-center">
+                        <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
+                            Enterprise Risk System v2.1
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // --- DASHBOARD UTAMA (JIKA SUDAH AUTH) ---
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800">
       <style>{`
@@ -389,6 +527,18 @@ const App = () => {
             <div className="font-bold tracking-widest uppercase animate-pulse">Sedang Memproses Data...</div>
         </div>
       )}
+
+      {/* LOGOUT BUTTON (Fixed Bottom Right) */}
+      <button 
+        onClick={() => {
+            setIsAuthenticated(false);
+            setTokenInput("");
+        }}
+        className="fixed bottom-5 right-5 z-50 p-3 bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-lg border border-slate-200 transition-all no-print"
+        title="Keluar Aplikasi"
+      >
+        <div className="w-6 h-6"><IconLogOut /></div>
+      </button>
 
       {/* Main Container */}
       <div className="w-full max-w-7xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 mb-10 print-area">
@@ -450,11 +600,21 @@ const App = () => {
             <div 
               onDrop={(e) => handleDrop(e, 'pool')}
               onDragOver={handleDragOver}
-              className="min-h-[120px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-wrap items-center justify-center gap-4 shadow-inner transition-all hover:border-indigo-400 group"
+              className="min-h-[120px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-wrap items-center justify-center gap-4 shadow-inner transition-all hover:border-indigo-400"
             >
-              {Object.keys(riskPositions[selectedPeriod]).map(id => (
-                riskPositions[selectedPeriod][id] === 'pool' && <RiskMarker key={id} id={id} onDragStart={handleDragStart} />
-              ))}
+              {Object.keys(riskPositions[selectedPeriod]).map(id => {
+                // MENCARI DATA RISIKO BERDASARKAN ID
+                const riskInfo = riskData.find(r => r.id === parseInt(id));
+                return riskPositions[selectedPeriod][id] === 'pool' && (
+                  <RiskMarker 
+                    key={id} 
+                    id={id} 
+                    // MENGIRIM PROPS TEXT KE RISK MARKER
+                    text={riskInfo ? riskInfo.text : ""} 
+                    onDragStart={handleDragStart} 
+                  />
+                );
+              })}
               {Object.values(riskPositions[selectedPeriod]).every(v => v !== 'pool') && (
                 <div className="text-indigo-500 font-black text-xs uppercase tracking-widest animate-pulse">
                   Semua risiko periode ini telah dipetakan
@@ -471,8 +631,8 @@ const App = () => {
               <tr className="bg-slate-50">
                 <th colSpan="3" rowSpan="2" className="p-6 border border-slate-200">
                     <div className="flex flex-col items-center">
-                     <span className="text-xl font-black text-slate-800 uppercase tracking-tighter italic">Risk Map</span>
-                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Matriks Analisis Risiko 5x5</span>
+                      <span className="text-xl font-black text-slate-800 uppercase tracking-tighter italic">Risk Map</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Matriks Analisis Risiko 5x5</span>
                     </div>
                 </th>
                 <th colSpan="5" className="border border-slate-200 bg-slate-800 py-4 font-black text-base uppercase tracking-[0.4em] text-white">Level Dampak (Impact)</th>
@@ -524,7 +684,17 @@ const App = () => {
                           {bgNumbers[key]}
                         </div>
                         <div className="relative flex flex-wrap gap-2 justify-center items-center h-full z-20">
-                          {items.map(id => <RiskMarker key={id} id={id} onDragStart={handleDragStart} />)}
+                          {items.map(id => {
+                            const riskInfo = riskData.find(r => r.id === parseInt(id));
+                            return (
+                                <RiskMarker 
+                                    key={id} 
+                                    id={id} 
+                                    text={riskInfo ? riskInfo.text : ""} 
+                                    onDragStart={handleDragStart} 
+                                />
+                            );
+                          })}
                         </div>
                       </td>
                     );
@@ -545,6 +715,21 @@ const App = () => {
             </div>
             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Daftar Kejadian Risiko & Besaran Per Periode</h2>
           </div>
+
+          {/* FILTER BIDANG */}
+          <div className="relative flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 no-print">
+             <div className="w-4 h-4 text-indigo-500"><IconFilter /></div>
+             <select 
+               value={selectedBidang} 
+               onChange={(e) => setSelectedBidang(e.target.value)} 
+               className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-700 outline-none cursor-pointer w-full max-w-[200px]"
+             >
+               {Object.keys(bidangFilters).map(bidang => (
+                 <option key={bidang} value={bidang}>{bidang}</option>
+               ))}
+             </select>
+          </div>
+
         </div>
         
         <div className="overflow-x-auto">
@@ -553,39 +738,62 @@ const App = () => {
               <tr className="bg-slate-800 text-white uppercase text-[10px] tracking-widest text-left">
                 <th className="p-4 w-24 text-center rounded-tl-2xl">Nomor</th>
                 <th className="p-4">Kejadian Risiko</th>
+                {/* KOLOM BARU: Py */}
+                <th className="p-4 w-16 text-center border-r border-slate-600 bg-slate-700 text-white">Py</th>
                 {periods.map(p => (
                   <th key={p} className={`p-4 w-20 text-center ${p === selectedPeriod ? 'bg-indigo-700' : ''}`}>
                     {p}
                   </th>
                 ))}
+                {/* KOLOM BARU: Residual Harapan */}
+                <th className="p-4 w-24 text-center rounded-tr-2xl bg-slate-700 text-white">Residual Harapan</th>
               </tr>
             </thead>
             <tbody>
-              {riskData.map((risk, idx) => (
-                <tr 
-                  key={risk.id} 
-                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors group ${riskPositions[selectedPeriod][risk.id] !== 'pool' ? 'bg-indigo-50/30' : ''}`}
-                >
-                  <td className="p-4 text-center font-bold text-slate-400">
-                    #{(idx + 1).toString().padStart(2, '0')}
-                  </td>
-                  <td 
-                    className="p-4 text-sm font-medium text-slate-700 leading-relaxed cursor-pointer hover:text-indigo-600 transition-colors"
-                    onClick={() => setSelectedRiskDetail(risk)}
-                  >
-                    <span className="underline decoration-slate-200 underline-offset-4 group-hover:decoration-indigo-300">
-                      {risk.text}
-                    </span>
-                  </td>
-                  {periods.map(p => (
-                    <td key={p} className={`p-4 text-center border-r border-slate-50 font-black text-xs ${p === selectedPeriod ? 'text-indigo-600' : 'text-slate-400'}`}>
-                      <div className={`py-1 rounded-md ${p === selectedPeriod && getScoreForPeriod(risk.id, p) !== '-' ? 'bg-indigo-100' : ''}`}>
-                        {getScoreForPeriod(risk.id, p)}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {/* LOGIKA FILTER DI SINI */}
+              {riskData
+                .filter(risk => {
+                    // Jika "Semua Bidang" dipilih, tampilkan semua
+                    if (selectedBidang === "Semua Bidang") return true;
+                    // Jika bidang spesifik dipilih, cek apakah ID risiko ada dalam array ID bidang tersebut
+                    return bidangFilters[selectedBidang].includes(risk.id);
+                })
+                .map((risk, idx) => {
+                  const scores = initialRiskValues[risk.id] || { py: '-', res: '-' };
+                  return (
+                    <tr 
+                      key={risk.id} 
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors group ${riskPositions[selectedPeriod][risk.id] !== 'pool' ? 'bg-indigo-50/30' : ''}`}
+                    >
+                      <td className="p-4 text-center font-bold text-slate-400">
+                        #{risk.id.toString().padStart(2, '0')}
+                      </td>
+                      <td 
+                        className="p-4 text-sm font-medium text-slate-700 leading-relaxed cursor-pointer hover:text-indigo-600 transition-colors"
+                        onClick={() => setSelectedRiskDetail(risk)}
+                      >
+                        <span className="underline decoration-slate-200 underline-offset-4 group-hover:decoration-indigo-300">
+                          {risk.text}
+                        </span>
+                      </td>
+                      {/* CELL BARU: Py */}
+                      <td className="p-4 text-center border-r border-slate-50 font-bold text-slate-500 bg-slate-50/50">
+                        {scores.py}
+                      </td>
+                      {periods.map(p => (
+                        <td key={p} className={`p-4 text-center border-r border-slate-50 font-black text-xs ${p === selectedPeriod ? 'text-indigo-600' : 'text-slate-400'}`}>
+                          <div className={`py-1 rounded-md ${p === selectedPeriod && getScoreForPeriod(risk.id, p) !== '-' ? 'bg-indigo-100' : ''}`}>
+                            {getScoreForPeriod(risk.id, p)}
+                          </div>
+                        </td>
+                      ))}
+                      {/* CELL BARU: Residual Harapan */}
+                      <td className="p-4 text-center font-bold text-slate-500 bg-slate-50/50">
+                        {scores.res}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
