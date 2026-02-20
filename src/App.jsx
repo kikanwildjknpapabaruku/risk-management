@@ -3,9 +3,6 @@ import React, { useState, useEffect } from 'react';
 // --- KONFIGURASI API ---
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGR4Mnd3BISeX0IyD_tfuzEycuvHl7R5tyD205tT8yjEY4DrMmYHNSI6XQgouck5712g/exec";
 
-// --- KONSTANTA TOKEN ---
-const STATIC_TOKEN = "kanwilDJKN#17";
-
 // --- KOMPONEN IKON SVG INLINE ---
 const IconAlertCircle = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -64,7 +61,7 @@ const riskData = [
   { id: 7, text: "Adanya pembatalan lelang" },
   { id: 8, text: "Rendahnya kepatuhan K/L dalam pengawasan dan pengendalian BMN" },
   { id: 9, text: "BMN Berupa Tanah Tidak Dilengkapi Dokumen Kepemilikan (Sertipikat Hak Pakai)" },
-  { id: 10, text: "Rendahnya Pelunasan Berkhas Kasus Piutang Negara" },
+  { id: 10, text: "Rendahnya Pelunasan Berkas Kasus Piutang Negara" },
   { id: 11, text: "Adanya permohonan penilaian yang terlaksana lebih cepat dari SOP" },
   { id: 12, text: "Terdapat frekuensi Lelang HT dan Lelang Wajib BMN yang TAP (tidak laku)" },
   { id: 13, text: "Kegiatan Learning Organization belum terdokumentasi dengan baik​" },
@@ -226,9 +223,10 @@ const App = () => {
   // --- STATE AUTH ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
+  const [activeToken, setActiveToken] = useState(""); // Menyimpan token valid untuk dipanggil di action lain
 
   const [selectedPeriod, setSelectedPeriod] = useState("TW I");
-  const [selectedBidang, setSelectedBidang] = useState("Semua Bidang"); // State baru untuk filter bidang
+  const [selectedBidang, setSelectedBidang] = useState("Semua Bidang");
   const [isLikelihoodModalOpen, setLikelihoodModalOpen] = useState(false);
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
   const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
@@ -264,57 +262,68 @@ const App = () => {
 
   // --- API INTEGRATION ---
 
-  // 1. Fetch data on load
-  useEffect(() => {
-    const fetchData = async () => {
-      // Hanya fetch data jika sudah login
-      if (!isAuthenticated) return;
+  // 1. Fetch / Validasi via Login
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setNotification(null);
 
-      setIsLoading(true);
-      try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        const data = await response.json();
-        
-        if (data && data.positions) {
-            setRiskPositions(data.positions);
-        }
-        if (data && data.details) {
-            setRiskDetailData(data.details);
-        }
-        
-      } catch (error) {
-        console.error("Gagal memuat data:", error);
-        setNotification({ type: 'error', message: 'Gagal memuat data dari Spreadsheet.' });
+    try {
+      // Mengirim request GET ke Google Apps Script bersama Token
+      const url = `${GOOGLE_SCRIPT_URL}?action=read&token=${encodeURIComponent(tokenInput)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data && data.status === 'success') {
+        setIsAuthenticated(true);
+        setActiveToken(tokenInput); // Simpan token yang terverifikasi ke state
+        setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
         setTimeout(() => setNotification(null), 3000);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
-    fetchData();
-  }, [isAuthenticated]); // Dependency berubah ke isAuthenticated agar load data setelah login
+        // Jika backend mengirim data (positions & details), update statenya
+        if (data.positions) setRiskPositions(data.positions);
+        if (data.details) setRiskDetailData(data.details);
+
+      } else {
+        setNotification({ type: 'error', message: data.message || 'Token Salah atau Ditolak Server!' });
+        setTimeout(() => setNotification(null), 3000);
+        setTokenInput("");
+      }
+    } catch (error) {
+      console.error("Gagal verifikasi login:", error);
+      setNotification({ type: 'error', message: 'Koneksi ke server gagal. Cek kembali URL/Jaringan.' });
+      setTimeout(() => setNotification(null), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 2. Save data function
   const handleSaveToCloud = async () => {
     setIsLoading(true);
     setNotification(null);
 
+    // Menyertakan token aktif ke dalam body POST
     const payload = {
         action: 'save',
-        riskData: riskData, // Data referensi statis
-        details: riskDetailData, // Data input user
-        positions: riskPositions // Data posisi user
+        token: activeToken, // Token keamanan
+        riskData: riskData,
+        details: riskDetailData,
+        positions: riskPositions
     };
 
     try {
-        // Menggunakan fetch dengan method POST stringified body
-        // Google Apps Script doPost menangani ini
-        await fetch(GOOGLE_SCRIPT_URL, {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(payload)
         });
+        const result = await response.json();
 
-        setNotification({ type: 'success', message: 'Data berhasil disimpan ke Spreadsheet!' });
+        if (result.status === 'success') {
+           setNotification({ type: 'success', message: 'Data berhasil disimpan ke Spreadsheet!' });
+        } else {
+           setNotification({ type: 'error', message: result.message || 'Gagal menyimpan (Ditolak)' });
+        }
         setTimeout(() => setNotification(null), 3000);
     } catch (error) {
         console.error("Gagal menyimpan:", error);
@@ -417,20 +426,6 @@ const App = () => {
     });
   };
 
-  // --- HANDLER LOGIN ---
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (tokenInput === STATIC_TOKEN) {
-        setIsAuthenticated(true);
-        setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
-        setTimeout(() => setNotification(null), 3000);
-    } else {
-        setNotification({ type: 'error', message: 'Token Salah! Akses Ditolak.' });
-        setTimeout(() => setNotification(null), 3000);
-        setTokenInput("");
-    }
-  };
-
   // --- HALAMAN LOGIN (JIKA BELUM AUTH) ---
   if (!isAuthenticated) {
       return (
@@ -449,7 +444,7 @@ const App = () => {
                     </div>
                     
                     <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight text-center mb-2">
-                        Risk Management DJKN Papabaruku
+                        Risk Management Papabaruku
                     </h1>
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-center mb-8">
                         Restricted Access Area
@@ -474,15 +469,16 @@ const App = () => {
 
                         <button 
                             type="submit"
-                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] mt-4"
+                            disabled={isLoading}
+                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] mt-4 disabled:opacity-70 flex justify-center items-center gap-2"
                         >
-                            Masuk Aplikasi
+                            {isLoading ? <div className="w-5 h-5"><IconLoader /></div> : "Masuk Aplikasi"}
                         </button>
                     </form>
 
                     <div className="mt-8 pt-6 border-t border-slate-100 w-full text-center">
                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-                            Enterprise Risk System v2.1
+                            BIDANG KIHI DJKN PAPABARUKU v1.1
                         </span>
                     </div>
                 </div>
@@ -533,6 +529,7 @@ const App = () => {
         onClick={() => {
             setIsAuthenticated(false);
             setTokenInput("");
+            setActiveToken(""); // Clear token aktif
         }}
         className="fixed bottom-5 right-5 z-50 p-3 bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-lg border border-slate-200 transition-all no-print"
         title="Keluar Aplikasi"
@@ -603,13 +600,11 @@ const App = () => {
               className="min-h-[120px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-wrap items-center justify-center gap-4 shadow-inner transition-all hover:border-indigo-400"
             >
               {Object.keys(riskPositions[selectedPeriod]).map(id => {
-                // MENCARI DATA RISIKO BERDASARKAN ID
                 const riskInfo = riskData.find(r => r.id === parseInt(id));
                 return riskPositions[selectedPeriod][id] === 'pool' && (
                   <RiskMarker 
                     key={id} 
                     id={id} 
-                    // MENGIRIM PROPS TEXT KE RISK MARKER
                     text={riskInfo ? riskInfo.text : ""} 
                     onDragStart={handleDragStart} 
                   />
@@ -994,7 +989,7 @@ const App = () => {
         )}
       </Modal>
 
-      <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">Seksi Kepatuhan Internal DJKN Papabaruku v1</div>
+      <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">BIDANG KIHI DJKN PAPABARUKU v1.1</div>
     </div>
   );
 };
