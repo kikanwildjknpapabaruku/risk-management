@@ -49,6 +49,9 @@ const IconLogOut = () => (
 const IconFilter = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
 );
+const IconLightbulb = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+);
 
 // --- KONSTANTA DATA ---
 const riskData = [
@@ -222,6 +225,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 const App = () => {
   // --- STATE AUTH ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // State baru untuk loading awal
   const [tokenInput, setTokenInput] = useState("");
   const [activeToken, setActiveToken] = useState(""); // Menyimpan token valid untuk dipanggil di action lain
 
@@ -231,6 +235,12 @@ const App = () => {
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
   const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
   
+  // States untuk tombol tampilkan contoh pada setiap field
+  const [showExplanationExample, setShowExplanationExample] = useState(false);
+  const [showProjectionExample, setShowProjectionExample] = useState(false);
+  const [showMitigationsImplementedExample, setShowMitigationsImplementedExample] = useState(false);
+  const [showMitigationPlansExample, setShowMitigationPlansExample] = useState(false);
+
   // Status untuk operasi API
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: '' }
@@ -252,6 +262,7 @@ const App = () => {
       riskData.forEach(r => {
         initial[p][r.id] = {
           explanation: "",
+          projection: "", // Menambahkan field untuk Proyeksi Risiko
           mitigationsImplemented: [""],
           mitigationPlans: [""]
         };
@@ -259,6 +270,40 @@ const App = () => {
     });
     return initial;
   });
+
+  // =================================================================
+  // TAMBAHAN FITUR PERSISTENT LOGIN (ANTI-LOGOUT SAAT RELOAD)
+  // =================================================================
+  useEffect(() => {
+    const savedToken = localStorage.getItem('app_token');
+    if (savedToken) {
+      verifyTokenSilently(savedToken);
+    } else {
+      setIsCheckingAuth(false); // Selesai ngecek, tidak ada token
+    }
+  }, []);
+
+  const verifyTokenSilently = async (token) => {
+    try {
+      const url = `${GOOGLE_SCRIPT_URL}?action=read&token=${encodeURIComponent(token)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data && data.status === 'success') {
+        setIsAuthenticated(true);
+        setActiveToken(token);
+        if (data.positions) setRiskPositions(data.positions);
+        if (data.details) setRiskDetailData(data.details);
+      } else {
+        localStorage.removeItem('app_token'); // Hapus token jika server menolak
+      }
+    } catch (error) {
+      console.error("Gagal auto-login:", error);
+    } finally {
+      setIsCheckingAuth(false); // Matikan loading screen awal
+    }
+  };
+  // =================================================================
 
   // --- API INTEGRATION ---
 
@@ -277,6 +322,10 @@ const App = () => {
       if (data && data.status === 'success') {
         setIsAuthenticated(true);
         setActiveToken(tokenInput); // Simpan token yang terverifikasi ke state
+        
+        // Simpan token ke browser untuk persistent login
+        localStorage.setItem('app_token', tokenInput);
+
         setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
         setTimeout(() => setNotification(null), 3000);
 
@@ -426,6 +475,27 @@ const App = () => {
     });
   };
 
+  // Tutup Modal dan reset state tambahannya
+  const handleCloseRiskDetail = () => {
+    setSelectedRiskDetail(null);
+    setShowExplanationExample(false);
+    setShowProjectionExample(false);
+    setShowMitigationsImplementedExample(false);
+    setShowMitigationPlansExample(false);
+  };
+
+  // --- LOADING SCREEN AWAL (Mencegah flash halaman login) ---
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
+         <div className="flex flex-col items-center gap-4 text-indigo-600">
+            <div className="w-12 h-12"><IconLoader /></div>
+            <div className="font-bold tracking-widest uppercase animate-pulse">Memverifikasi Sesi Anda...</div>
+         </div>
+      </div>
+    );
+  }
+
   // --- HALAMAN LOGIN (JIKA BELUM AUTH) ---
   if (!isAuthenticated) {
       return (
@@ -530,6 +600,7 @@ const App = () => {
             setIsAuthenticated(false);
             setTokenInput("");
             setActiveToken(""); // Clear token aktif
+            localStorage.removeItem('app_token'); // Hapus token dari browser saat logout
         }}
         className="fixed bottom-5 right-5 z-50 p-3 bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-lg border border-slate-200 transition-all no-print"
         title="Keluar Aplikasi"
@@ -930,7 +1001,7 @@ const App = () => {
       </Modal>
 
       {/* Modal Detail Risiko (Daftar Kejadian) */}
-      <Modal isOpen={!!selectedRiskDetail} onClose={() => setSelectedRiskDetail(null)} title={`Detail Pengelolaan Risiko - ${selectedPeriod}`}>
+      <Modal isOpen={!!selectedRiskDetail} onClose={handleCloseRiskDetail} title={`Detail Pengelolaan Risiko - ${selectedPeriod}`}>
         {selectedRiskDetail && (
            <div className="space-y-6 pb-10">
               <div className="p-5 bg-indigo-50 rounded-[1.5rem] border-l-8 border-indigo-600 shadow-sm">
@@ -939,43 +1010,125 @@ const App = () => {
               </div>
               
               <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                    <div className="w-1 h-4 bg-indigo-500 rounded-full"></div> Penjelasan Aktual
-                  </label>
+                
+                {/* --- FIELD PENJELASAN AKTUAL --- */}
+                <div className="space-y-2 p-4 bg-slate-50 rounded-[1.5rem] border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                      <div className="w-1 h-4 bg-indigo-500 rounded-full"></div> Penjelasan Aktual
+                    </label>
+                    <button 
+                      onClick={() => setShowExplanationExample(!showExplanationExample)} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                    >
+                      <div className="w-3 h-3"><IconLightbulb /></div>
+                      {showExplanationExample ? "Tutup Contoh" : "Lihat Contoh"}
+                    </button>
+                  </div>
+                  
+                  {showExplanationExample && (
+                    <div className="p-3 bg-white text-slate-700 text-xs rounded-xl italic border border-slate-300 leading-relaxed shadow-sm">
+                      <span className="font-bold">Contoh Pengisian:</span> "Berdasarkan pelaksanaan Sertifikasi BMN pada Kanwil DJKN Papua, Papua Barat, dan pada Triwulan II pada level Kanwil sudah tercapai. Namun terdapat potensi yang kemungkinan besar tidak terealisasi sebanyak 169 bidang tanah yang telah bersertipikat dan validasi pada tahun sebelumnya"
+                    </div>
+                  )}
+
                   <textarea 
-                    className="w-full p-4 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 outline-none text-sm min-h-[100px]" 
-                    value={riskDetailData[selectedPeriod][selectedRiskDetail.id].explanation} 
+                    className="w-full p-4 border-2 border-white bg-white rounded-2xl focus:border-indigo-400 focus:bg-white outline-none text-sm min-h-[100px] shadow-sm transition-all" 
+                    value={riskDetailData[selectedPeriod][selectedRiskDetail.id].explanation || ""} 
                     onChange={(e) => updateRiskDetail('explanation', e.target.value)} 
+                    placeholder="Tuliskan penjelasan aktual pada periode ini..."
                   />
                 </div>
 
-                <div className="space-y-4">
+                {/* --- FIELD PROYEKSI RISIKO --- */}
+                <div className="space-y-2 p-4 bg-amber-50 rounded-[1.5rem] border border-amber-100">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                    <label className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-2">
+                      <div className="w-1 h-4 bg-amber-500 rounded-full"></div> Proyeksi Risiko
+                    </label>
+                    <button 
+                      onClick={() => setShowProjectionExample(!showProjectionExample)} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                    >
+                      <div className="w-3 h-3"><IconLightbulb /></div>
+                      {showProjectionExample ? "Tutup Contoh" : "Lihat Contoh"}
+                    </button>
+                  </div>
+                  
+                  {showProjectionExample && (
+                    <div className="p-3 bg-white text-amber-800 text-xs rounded-xl italic border border-amber-200 leading-relaxed shadow-sm">
+                      <span className="font-bold">Contoh Pengisian:</span> "Proyeksi risiko pencapaian tersebut di Triwulan II diperkirakan dapat bergerak dari signifikan dan hampir pasti terjadi (19) menjadi sering terjadi dan moderat (14) dikarenakan adanya upaya upaya koordinasi bukan hanya pihak BPN namun juga satker yang terlibat yang telah dilakukan pada triwulan I yang diharapkan akan berdampak pada turunnya risiko pada triwulan II"
+                    </div>
+                  )}
+
+                  <textarea 
+                    className="w-full p-4 border-2 border-white bg-white rounded-2xl focus:border-amber-400 focus:bg-white outline-none text-sm min-h-[100px] shadow-sm transition-all" 
+                    value={riskDetailData[selectedPeriod][selectedRiskDetail.id].projection || ""} 
+                    onChange={(e) => updateRiskDetail('projection', e.target.value)} 
+                    placeholder="Tuliskan proyeksi pergerakan risiko di periode selanjutnya beserta alasannya..."
+                  />
+                </div>
+
+                {/* --- FIELD MITIGASI TERLAKSANA --- */}
+                <div className="space-y-4 p-4 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase text-emerald-700 tracking-wider flex items-center gap-2">
                       <div className="w-1 h-4 bg-emerald-500 rounded-full"></div> Mitigasi Terlaksana
                     </label>
-                    <button onClick={() => addListItem('mitigationsImplemented')} className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100"><IconPlus /></button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setShowMitigationsImplementedExample(!showMitigationsImplementedExample)} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-200 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                        >
+                          <div className="w-3 h-3"><IconLightbulb /></div>
+                          {showMitigationsImplementedExample ? "Tutup Contoh" : "Lihat Contoh"}
+                        </button>
+                        <button onClick={() => addListItem('mitigationsImplemented')} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"><IconPlus /></button>
+                    </div>
                   </div>
+                  
+                  {showMitigationsImplementedExample && (
+                    <div className="p-3 bg-white text-emerald-800 text-xs rounded-xl italic border border-emerald-200 leading-relaxed shadow-sm">
+                      <span className="font-bold">Contoh Pengisian:</span> "Koordinasi intensif dengan Kantor Wilayah BPN dan KPKNL dalam rangka monitoring progress capaian pada tanah Kategori 1 (nominatif) yang telah dipastikan clean and clear dan mendapatkan alokasi anggaran tahun 2025"
+                    </div>
+                  )}
+
                   {riskDetailData[selectedPeriod][selectedRiskDetail.id].mitigationsImplemented.map((item, idx) => (
                     <div key={idx} className="flex gap-2 group">
-                      <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationsImplemented', e.target.value, idx)} className="flex-1 p-3 border border-slate-200 rounded-xl text-xs" />
-                      <button onClick={() => removeListItem('mitigationsImplemented', idx)} className="text-slate-300 hover:text-red-500"><IconTrash /></button>
+                      <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationsImplemented', e.target.value, idx)} className="flex-1 p-3 border-2 border-white bg-white focus:border-emerald-400 rounded-xl text-xs shadow-sm transition-all outline-none" placeholder="Tulis mitigasi yang telah dilakukan..." />
+                      <button onClick={() => removeListItem('mitigationsImplemented', idx)} className="text-slate-300 hover:text-red-500 px-2"><IconTrash /></button>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-4">
+                {/* --- FIELD RENCANA MITIGASI --- */}
+                <div className="space-y-4 p-4 bg-blue-50/50 rounded-[1.5rem] border border-blue-100">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                    <label className="text-[11px] font-black uppercase text-blue-700 tracking-wider flex items-center gap-2">
                       <div className="w-1 h-4 bg-blue-500 rounded-full"></div> Rencana Mitigasi
                     </label>
-                    <button onClick={() => addListItem('mitigationPlans')} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><IconPlus /></button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setShowMitigationPlansExample(!showMitigationPlansExample)} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                        >
+                          <div className="w-3 h-3"><IconLightbulb /></div>
+                          {showMitigationPlansExample ? "Tutup Contoh" : "Lihat Contoh"}
+                        </button>
+                        <button onClick={() => addListItem('mitigationPlans')} className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><IconPlus /></button>
+                    </div>
                   </div>
+
+                  {showMitigationPlansExample && (
+                    <div className="p-3 bg-white text-blue-800 text-xs rounded-xl italic border border-blue-200 leading-relaxed shadow-sm">
+                      <span className="font-bold">Contoh Pengisian:</span> "Menyusun jadwal timeline penyelesaian bidang tanah bersama satker terkait dan melaksanakan rapat evaluasi rutin setiap minggu di triwulan berikutnya."
+                    </div>
+                  )}
+
                   {riskDetailData[selectedPeriod][selectedRiskDetail.id].mitigationPlans.map((item, idx) => (
                     <div key={idx} className="flex gap-2 group">
-                      <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationPlans', e.target.value, idx)} className="flex-1 p-3 border border-slate-200 rounded-xl text-xs" />
-                      <button onClick={() => removeListItem('mitigationPlans', idx)} className="text-slate-300 hover:text-red-500"><IconTrash /></button>
+                      <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationPlans', e.target.value, idx)} className="flex-1 p-3 border-2 border-white bg-white focus:border-blue-400 rounded-xl text-xs shadow-sm transition-all outline-none" placeholder="Tulis rencana mitigasi ke depan..." />
+                      <button onClick={() => removeListItem('mitigationPlans', idx)} className="text-slate-300 hover:text-red-500 px-2"><IconTrash /></button>
                     </div>
                   ))}
                 </div>
@@ -983,7 +1136,7 @@ const App = () => {
 
               <div className="pt-6 border-t border-slate-100 flex justify-between items-center">
                 <span className="text-xs text-slate-400 italic">Tekan "Simpan ke Spreadsheet" di dashboard utama untuk menyimpan permanen.</span>
-                <button onClick={() => setSelectedRiskDetail(null)} className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-indigo-700 transition-colors">Tutup</button>
+                <button onClick={handleCloseRiskDetail} className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-indigo-700 transition-colors">Tutup</button>
               </div>
            </div>
         )}
