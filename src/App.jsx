@@ -37,6 +37,9 @@ const IconTrash = () => (
 const IconCloudUpload = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
+const IconSave = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+);
 const IconLoader = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
 );
@@ -225,9 +228,9 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 const App = () => {
   // --- STATE AUTH ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // State baru untuk loading awal
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [tokenInput, setTokenInput] = useState("");
-  const [activeToken, setActiveToken] = useState(""); // Menyimpan token valid untuk dipanggil di action lain
+  const [activeToken, setActiveToken] = useState("");
 
   const [selectedPeriod, setSelectedPeriod] = useState("TW I");
   const [selectedBidang, setSelectedBidang] = useState("Semua Bidang");
@@ -243,7 +246,7 @@ const App = () => {
 
   // Status untuk operasi API
   const [isLoading, setIsLoading] = useState(false);
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: '' }
+  const [notification, setNotification] = useState(null);
 
   // Initial State Data
   const [riskPositions, setRiskPositions] = useState(() => {
@@ -262,7 +265,7 @@ const App = () => {
       riskData.forEach(r => {
         initial[p][r.id] = {
           explanation: "",
-          projection: "", // Menambahkan field untuk Proyeksi Risiko
+          projection: "",
           mitigationsImplemented: [""],
           mitigationPlans: [""]
         };
@@ -271,15 +274,13 @@ const App = () => {
     return initial;
   });
 
-  // =================================================================
-  // TAMBAHAN FITUR PERSISTENT LOGIN (ANTI-LOGOUT SAAT RELOAD)
-  // =================================================================
+  // --- AUTO LOGIN PERSISTENCE ---
   useEffect(() => {
     const savedToken = localStorage.getItem('app_token');
     if (savedToken) {
       verifyTokenSilently(savedToken);
     } else {
-      setIsCheckingAuth(false); // Selesai ngecek, tidak ada token
+      setIsCheckingAuth(false);
     }
   }, []);
 
@@ -295,44 +296,36 @@ const App = () => {
         if (data.positions) setRiskPositions(data.positions);
         if (data.details) setRiskDetailData(data.details);
       } else {
-        localStorage.removeItem('app_token'); // Hapus token jika server menolak
+        localStorage.removeItem('app_token');
       }
     } catch (error) {
       console.error("Gagal auto-login:", error);
     } finally {
-      setIsCheckingAuth(false); // Matikan loading screen awal
+      setIsCheckingAuth(false);
     }
   };
-  // =================================================================
 
   // --- API INTEGRATION ---
-
-  // 1. Fetch / Validasi via Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setNotification(null);
 
     try {
-      // Mengirim request GET ke Google Apps Script bersama Token
       const url = `${GOOGLE_SCRIPT_URL}?action=read&token=${encodeURIComponent(tokenInput)}`;
       const response = await fetch(url);
       const data = await response.json();
 
       if (data && data.status === 'success') {
         setIsAuthenticated(true);
-        setActiveToken(tokenInput); // Simpan token yang terverifikasi ke state
-        
-        // Simpan token ke browser untuk persistent login
+        setActiveToken(tokenInput);
         localStorage.setItem('app_token', tokenInput);
 
         setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
         setTimeout(() => setNotification(null), 3000);
 
-        // Jika backend mengirim data (positions & details), update statenya
         if (data.positions) setRiskPositions(data.positions);
         if (data.details) setRiskDetailData(data.details);
-
       } else {
         setNotification({ type: 'error', message: data.message || 'Token Salah atau Ditolak Server!' });
         setTimeout(() => setNotification(null), 3000);
@@ -347,15 +340,15 @@ const App = () => {
     }
   };
 
-  // 2. Save data function
-  const handleSaveToCloud = async () => {
+  // Fungsi Save yang dapat dipanggil dari setiap risiko secara spesifik
+  const handleSaveRisk = async (riskId) => {
     setIsLoading(true);
     setNotification(null);
 
-    // Menyertakan token aktif ke dalam body POST
+    // Payload tetap mengirim seluruh state untuk memastikan sinkronisasi Mapping dan Teks
     const payload = {
         action: 'save',
-        token: activeToken, // Token keamanan
+        token: activeToken,
         riskData: riskData,
         details: riskDetailData,
         positions: riskPositions
@@ -369,7 +362,8 @@ const App = () => {
         const result = await response.json();
 
         if (result.status === 'success') {
-           setNotification({ type: 'success', message: 'Data berhasil disimpan ke Spreadsheet!' });
+           setNotification({ type: 'success', message: `Data Risiko #${riskId} & Mapping Berhasil Disimpan!` });
+           if (selectedRiskDetail) handleCloseRiskDetail(); // Tutup modal otomatis setelah berhasil simpan
         } else {
            setNotification({ type: 'error', message: result.message || 'Gagal menyimpan (Ditolak)' });
         }
@@ -475,7 +469,6 @@ const App = () => {
     });
   };
 
-  // Tutup Modal dan reset state tambahannya
   const handleCloseRiskDetail = () => {
     setSelectedRiskDetail(null);
     setShowExplanationExample(false);
@@ -484,7 +477,32 @@ const App = () => {
     setShowMitigationPlansExample(false);
   };
 
-  // --- LOADING SCREEN AWAL (Mencegah flash halaman login) ---
+  // --- LOGIKA STATUS KELENGKAPAN FORMULIR ---
+  const getRiskStatus = (riskId, period) => {
+    const detail = riskDetailData[period]?.[riskId];
+    if (!detail) return "Belum Diisi";
+
+    const hasExp = detail.explanation?.trim().length > 0;
+    const hasProj = detail.projection?.trim().length > 0;
+    const hasMitImpl = detail.mitigationsImplemented?.some(m => m.trim().length > 0);
+    const hasMitPlan = detail.mitigationPlans?.some(m => m.trim().length > 0);
+
+    if (!hasExp && !hasProj && !hasMitImpl && !hasMitPlan) return "Belum Diisi";
+    if (hasExp && hasProj && hasMitImpl && hasMitPlan) return "Sudah Lengkap";
+    return "Belum Lengkap";
+  };
+
+  const getStatusBadge = (status) => {
+    if (status === "Sudah Lengkap") {
+      return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-emerald-200">Sudah Lengkap</span>;
+    }
+    if (status === "Belum Lengkap") {
+      return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-amber-200">Belum Lengkap</span>;
+    }
+    return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-wider border border-slate-200">Belum Diisi</span>;
+  };
+
+  // --- LOADING SCREEN AWAL ---
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
@@ -496,11 +514,10 @@ const App = () => {
     );
   }
 
-  // --- HALAMAN LOGIN (JIKA BELUM AUTH) ---
+  // --- HALAMAN LOGIN ---
   if (!isAuthenticated) {
       return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
-             {/* NOTIFICATION TOAST LOGIN */}
             {notification && (
                 <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
                     <div className="font-bold">{notification.message}</div>
@@ -557,7 +574,7 @@ const App = () => {
       );
   }
 
-  // --- DASHBOARD UTAMA (JIKA SUDAH AUTH) ---
+  // --- DASHBOARD UTAMA ---
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800">
       <style>{`
@@ -590,17 +607,17 @@ const App = () => {
       {isLoading && (
         <div className="fixed inset-0 z-[200] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center flex-col gap-4 text-white">
             <div className="w-12 h-12"><IconLoader /></div>
-            <div className="font-bold tracking-widest uppercase animate-pulse">Sedang Memproses Data...</div>
+            <div className="font-bold tracking-widest uppercase animate-pulse">Menyimpan Data...</div>
         </div>
       )}
 
-      {/* LOGOUT BUTTON (Fixed Bottom Right) */}
+      {/* LOGOUT BUTTON */}
       <button 
         onClick={() => {
             setIsAuthenticated(false);
             setTokenInput("");
-            setActiveToken(""); // Clear token aktif
-            localStorage.removeItem('app_token'); // Hapus token dari browser saat logout
+            setActiveToken("");
+            localStorage.removeItem('app_token');
         }}
         className="fixed bottom-5 right-5 z-50 p-3 bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full shadow-lg border border-slate-200 transition-all no-print"
         title="Keluar Aplikasi"
@@ -626,12 +643,6 @@ const App = () => {
             </div>
             
             <div className="flex flex-wrap gap-3 items-center no-print">
-              
-               {/* TOMBOL SIMPAN KE CLOUD */}
-               <button onClick={handleSaveToCloud} disabled={isLoading} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                <div className="w-4 h-4"><IconCloudUpload /></div> Simpan ke Spreadsheet
-              </button>
-
               <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95">
                 <div className="w-4 h-4"><IconPrinter /></div> Cetak PDF
               </button>
@@ -652,7 +663,7 @@ const App = () => {
               </button>
               
               <button onClick={resetPositions} className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-200 active:scale-95">
-                <div className="w-4 h-4"><IconRotateCcw /></div> Reset
+                <div className="w-4 h-4"><IconRotateCcw /></div> Reset Posisi
               </button>
             </div>
           </div>
@@ -782,7 +793,6 @@ const App = () => {
             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Daftar Kejadian Risiko & Besaran Per Periode</h2>
           </div>
 
-          {/* FILTER BIDANG */}
           <div className="relative flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 no-print">
              <div className="w-4 h-4 text-indigo-500"><IconFilter /></div>
              <select 
@@ -795,36 +805,34 @@ const App = () => {
                ))}
              </select>
           </div>
-
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-800 text-white uppercase text-[10px] tracking-widest text-left">
-                <th className="p-4 w-24 text-center rounded-tl-2xl">Nomor</th>
+                <th className="p-4 w-20 text-center rounded-tl-2xl">Nomor</th>
                 <th className="p-4">Kejadian Risiko</th>
-                {/* KOLOM BARU: Py */}
-                <th className="p-4 w-16 text-center border-r border-slate-600 bg-slate-700 text-white">Py</th>
+                <th className="p-4 w-12 text-center border-r border-slate-600 bg-slate-700">Py</th>
                 {periods.map(p => (
-                  <th key={p} className={`p-4 w-20 text-center ${p === selectedPeriod ? 'bg-indigo-700' : ''}`}>
+                  <th key={p} className={`p-4 w-16 text-center ${p === selectedPeriod ? 'bg-indigo-700' : ''}`}>
                     {p}
                   </th>
                 ))}
-                {/* KOLOM BARU: Residual Harapan */}
-                <th className="p-4 w-24 text-center rounded-tr-2xl bg-slate-700 text-white">Residual Harapan</th>
+                <th className="p-4 w-20 text-center bg-slate-700">Residual Harapan</th>
+                {/* KOLOM STATUS BARU */}
+                <th className="p-4 w-28 text-center bg-slate-700 text-white">Status Form</th>
+                {/* KOLOM AKSI BARU */}
+                <th className="p-4 w-28 text-center rounded-tr-2xl bg-indigo-600 no-print">Aksi Simpan</th>
               </tr>
             </thead>
             <tbody>
-              {/* LOGIKA FILTER DI SINI */}
               {riskData
                 .filter(risk => {
-                    // Jika "Semua Bidang" dipilih, tampilkan semua
                     if (selectedBidang === "Semua Bidang") return true;
-                    // Jika bidang spesifik dipilih, cek apakah ID risiko ada dalam array ID bidang tersebut
                     return bidangFilters[selectedBidang].includes(risk.id);
                 })
-                .map((risk, idx) => {
+                .map((risk) => {
                   const scores = initialRiskValues[risk.id] || { py: '-', res: '-' };
                   return (
                     <tr 
@@ -842,7 +850,6 @@ const App = () => {
                           {risk.text}
                         </span>
                       </td>
-                      {/* CELL BARU: Py */}
                       <td className="p-4 text-center border-r border-slate-50 font-bold text-slate-500 bg-slate-50/50">
                         {scores.py}
                       </td>
@@ -853,9 +860,24 @@ const App = () => {
                           </div>
                         </td>
                       ))}
-                      {/* CELL BARU: Residual Harapan */}
                       <td className="p-4 text-center font-bold text-slate-500 bg-slate-50/50">
                         {scores.res}
+                      </td>
+                      {/* CELL STATUS BARU */}
+                      <td className="p-3 text-center align-middle">
+                        {getStatusBadge(getRiskStatus(risk.id, selectedPeriod))}
+                      </td>
+                      {/* TOMBOL SIMPAN PER BARIS RISIKO */}
+                      <td className="p-4 text-center no-print">
+                        <button 
+                            onClick={() => handleSaveRisk(risk.id)}
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-xl transition-all font-bold text-[10px] uppercase tracking-wider disabled:opacity-50"
+                            title="Simpan teks dan posisi matriks untuk risiko ini"
+                        >
+                            <div className="w-3.5 h-3.5"><IconSave /></div>
+                            Simpan
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1003,7 +1025,7 @@ const App = () => {
       {/* Modal Detail Risiko (Daftar Kejadian) */}
       <Modal isOpen={!!selectedRiskDetail} onClose={handleCloseRiskDetail} title={`Detail Pengelolaan Risiko - ${selectedPeriod}`}>
         {selectedRiskDetail && (
-           <div className="space-y-6 pb-10">
+           <div className="space-y-6 pb-2">
               <div className="p-5 bg-indigo-50 rounded-[1.5rem] border-l-8 border-indigo-600 shadow-sm">
                 <div className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1">Kejadian Risiko #{selectedRiskDetail.id}</div>
                 <p className="font-black text-slate-800 text-lg leading-tight uppercase">{selectedRiskDetail.text}</p>
@@ -1134,9 +1156,17 @@ const App = () => {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-100 flex justify-between items-center">
-                <span className="text-xs text-slate-400 italic">Tekan "Simpan ke Spreadsheet" di dashboard utama untuk menyimpan permanen.</span>
-                <button onClick={handleCloseRiskDetail} className="px-10 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-indigo-700 transition-colors">Tutup</button>
+              {/* ACTION FOOTER BARU */}
+              <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center bg-white">
+                <button onClick={handleCloseRiskDetail} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold text-xs uppercase transition-colors border border-transparent">Batal</button>
+                <button 
+                  onClick={() => handleSaveRisk(selectedRiskDetail.id)} 
+                  disabled={isLoading}
+                  className="px-8 py-3 bg-indigo-600 text-white flex items-center gap-2 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-indigo-700 transition-colors active:scale-95 disabled:opacity-50"
+                >
+                  <div className="w-4 h-4"><IconSave /></div>
+                  Simpan Teks & Mapping
+                </button>
               </div>
            </div>
         )}
