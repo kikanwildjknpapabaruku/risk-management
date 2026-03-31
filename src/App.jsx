@@ -181,25 +181,28 @@ const getCellColor = (l, i) => {
 
 // --- KOMPONEN PEMBANTU ---
 
-const RiskMarker = ({ id, text, onDragStart }) => {
+// Diubah: Ditambahkan props `onTouchStart` dan `isClone` serta class `touch-none` untuk optimalisasi sentuhan
+const RiskMarker = ({ id, text, onDragStart, onTouchStart, isClone }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart ? onDragStart(e, id) : null}
+      draggable={!isClone}
+      onDragStart={(e) => (!isClone && onDragStart) ? onDragStart(e, id) : null}
+      onTouchStart={(e) => (!isClone && onTouchStart) ? onTouchStart(e, id) : null}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative w-9 h-9 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:scale-125 z-30 drop-shadow-md shrink-0 marker-icon"
+      className={`relative w-9 h-9 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all z-30 drop-shadow-md shrink-0 marker-icon touch-none ${isClone ? 'opacity-80 scale-125' : 'hover:scale-125'}`}
     >
       <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-sm shadow-black/50 shadow-sm border border-slate-700"></div>
       <div className="absolute inset-0 bg-slate-900 rotate-0 rounded-sm border border-slate-700"></div>
       <span className="relative text-white font-bold text-[11px] select-none">{id}</span>
       
-      {/* Tooltip dengan state lokal - hanya muncul jika item ini dihover */}
-      <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-3 py-2 rounded-lg shadow-xl transition-all pointer-events-none z-[100] no-print w-48 text-center leading-snug border border-slate-600 ${isHovered ? 'scale-100' : 'scale-0'}`}>
-        {text || `Risiko #${id}`}
-      </div>
+      {!isClone && (
+        <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-3 py-2 rounded-lg shadow-xl transition-all pointer-events-none z-[100] no-print w-48 text-center leading-snug border border-slate-600 ${isHovered ? 'scale-100' : 'scale-0'}`}>
+          {text || `Risiko #${id}`}
+        </div>
+      )}
     </div>
   );
 };
@@ -237,6 +240,10 @@ const App = () => {
   const [isLikelihoodModalOpen, setLikelihoodModalOpen] = useState(false);
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
   const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
+  
+  // States untuk fitur Touch Drag di perangkat Mobile
+  const [draggedItemId, setDraggedItemId] = useState(null);
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   
   // States untuk tombol tampilkan contoh pada setiap field
   const [showExplanationExample, setShowExplanationExample] = useState(false);
@@ -340,12 +347,10 @@ const App = () => {
     }
   };
 
-  // Fungsi Save yang dapat dipanggil dari setiap risiko secara spesifik
   const handleSaveRisk = async (riskId) => {
     setIsLoading(true);
     setNotification(null);
 
-    // Payload tetap mengirim seluruh state untuk memastikan sinkronisasi Mapping dan Teks
     const payload = {
         action: 'save',
         token: activeToken,
@@ -363,7 +368,7 @@ const App = () => {
 
         if (result.status === 'success') {
            setNotification({ type: 'success', message: `Data Risiko #${riskId} & Mapping Berhasil Disimpan!` });
-           if (selectedRiskDetail) handleCloseRiskDetail(); // Tutup modal otomatis setelah berhasil simpan
+           if (selectedRiskDetail) handleCloseRiskDetail();
         } else {
            setNotification({ type: 'error', message: result.message || 'Gagal menyimpan (Ditolak)' });
         }
@@ -377,7 +382,7 @@ const App = () => {
     }
   };
 
-
+  // --- HTML5 DRAG & DROP HANDLERS (Desktop) ---
   const handleDragStart = (e, riskId) => {
     e.dataTransfer.setData("riskId", riskId);
   };
@@ -397,6 +402,43 @@ const App = () => {
   };
 
   const handleDragOver = (e) => e.preventDefault();
+
+  // --- CUSTOM TOUCH HANDLERS (Mobile / Tablet) ---
+  const handleTouchStart = (e, riskId) => {
+    const touch = e.touches[0];
+    setDraggedItemId(riskId);
+    setDragPosition({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!draggedItemId) return;
+    const touch = e.touches[0];
+    setDragPosition({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!draggedItemId) return;
+    
+    const touch = e.changedTouches[0];
+    // Deteksi elemen tempat jari dilepaskan (drop area)
+    const dropElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    if (dropElement) {
+       // Mencari elemen terdekat (parent/diri sendiri) yang memiliki atribut [data-droptarget]
+       const dropzone = dropElement.closest('[data-droptarget]');
+       if (dropzone) {
+           const targetLocation = dropzone.getAttribute('data-droptarget');
+           setRiskPositions(prev => ({
+              ...prev,
+              [selectedPeriod]: {
+                 ...prev[selectedPeriod],
+                 [draggedItemId]: targetLocation
+              }
+           }));
+       }
+    }
+    setDraggedItemId(null); // Reset setelah selesai
+  };
 
   const resetPositions = () => {
     if(window.confirm("Apakah Anda yakin ingin mereset posisi risiko untuk periode ini? Data yang belum disimpan ke Cloud akan hilang.")) {
@@ -477,7 +519,6 @@ const App = () => {
     setShowMitigationPlansExample(false);
   };
 
-  // --- LOGIKA STATUS KELENGKAPAN FORMULIR ---
   const getRiskStatus = (riskId, period) => {
     const detail = riskDetailData[period]?.[riskId];
     if (!detail) return "Belum Diisi";
@@ -576,7 +617,12 @@ const App = () => {
 
   // --- DASHBOARD UTAMA ---
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800">
+    <div 
+        className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800"
+        // Ditambahkan pendeteksi gerakan dan penghentian sentuhan di level global
+        onTouchMove={draggedItemId ? handleTouchMove : undefined}
+        onTouchEnd={draggedItemId ? handleTouchEnd : undefined}
+    >
       <style>{`
         @media print {
           @page { size: A4 landscape; margin: 10mm; }
@@ -626,7 +672,7 @@ const App = () => {
       </button>
 
       {/* Main Container */}
-      <div className="w-full max-w-7xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 mb-10 print-area">
+      <div className="w-full max-w-7xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 mb-10 print-area relative">
         <div className="bg-white p-8 border-b border-slate-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div className="flex items-center gap-5">
@@ -677,6 +723,7 @@ const App = () => {
               <span>Daftar Risiko Belum Terplot ({selectedPeriod})</span>
             </div>
             <div 
+              data-droptarget="pool" // Diubah: Menambahkan atribut target drop area untuk Mobile Touch
               onDrop={(e) => handleDrop(e, 'pool')}
               onDragOver={handleDragOver}
               className="min-h-[120px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-wrap items-center justify-center gap-4 shadow-inner transition-all hover:border-indigo-400"
@@ -689,6 +736,7 @@ const App = () => {
                     id={id} 
                     text={riskInfo ? riskInfo.text : ""} 
                     onDragStart={handleDragStart} 
+                    onTouchStart={handleTouchStart} // Diubah: Menambahkan onTouchStart
                   />
                 );
               })}
@@ -753,6 +801,7 @@ const App = () => {
                     return (
                       <td 
                         key={i} 
+                        data-droptarget={key} // Diubah: Menambahkan atribut target drop area sel ini untuk Mobile Touch
                         onDrop={(e) => handleDrop(e, key)} 
                         onDragOver={handleDragOver} 
                         className={`border border-slate-200 h-32 relative p-2 transition-all group ${getCellColor(l, i)}`}
@@ -769,6 +818,7 @@ const App = () => {
                                     id={id} 
                                     text={riskInfo ? riskInfo.text : ""} 
                                     onDragStart={handleDragStart} 
+                                    onTouchStart={handleTouchStart} // Diubah: Menambahkan onTouchStart
                                 />
                             );
                           })}
@@ -1171,6 +1221,17 @@ const App = () => {
            </div>
         )}
       </Modal>
+
+      {/* --- VISUAL CLONE SAAT DRAG DI HP --- */}
+      {/* Diubah: Memunculkan elemen terbang saat digeser di HP */}
+      {draggedItemId && (
+        <div 
+          className="fixed pointer-events-none z-[9999]"
+          style={{ left: dragPosition.x, top: dragPosition.y, transform: 'translate(-50%, -50%)' }}
+        >
+          <RiskMarker id={draggedItemId} text="" isClone={true} />
+        </div>
+      )}
 
       <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">BIDANG KIHI DJKN PAPABARUKU v1.1</div>
     </div>
