@@ -181,7 +181,6 @@ const getCellColor = (l, i) => {
 
 // --- KOMPONEN PEMBANTU ---
 
-// Diubah: Ditambahkan props `onTouchStart` dan `isClone` serta class `touch-none` untuk optimalisasi sentuhan
 const RiskMarker = ({ id, text, onDragStart, onTouchStart, isClone }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -312,6 +311,21 @@ const App = () => {
     }
   };
 
+  // --- MENCEGAH SCROLLING SAAT DRAG DI HP ---
+  useEffect(() => {
+    if (draggedItemId) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [draggedItemId]);
+
   // --- API INTEGRATION ---
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -420,22 +434,32 @@ const App = () => {
     if (!draggedItemId) return;
     
     const touch = e.changedTouches[0];
-    // Deteksi elemen tempat jari dilepaskan (drop area)
-    const dropElement = document.elementFromPoint(touch.clientX, touch.clientY);
-    
-    if (dropElement) {
-       // Mencari elemen terdekat (parent/diri sendiri) yang memiliki atribut [data-droptarget]
-       const dropzone = dropElement.closest('[data-droptarget]');
-       if (dropzone) {
-           const targetLocation = dropzone.getAttribute('data-droptarget');
-           setRiskPositions(prev => ({
-              ...prev,
-              [selectedPeriod]: {
-                 ...prev[selectedPeriod],
-                 [draggedItemId]: targetLocation
-              }
-           }));
-       }
+    let targetLocation = null;
+
+    // Kalkulasi Bounding Box: Pendekatan paling akurat untuk HP agar tidak terhalang elemen Clone
+    const dropzones = document.querySelectorAll('[data-droptarget]');
+    for (let i = 0; i < dropzones.length; i++) {
+        const rect = dropzones[i].getBoundingClientRect();
+        // Cek apakah koordinat jari kita masuk ke dalam kotak elemen dropzone ini
+        if (
+            touch.clientX >= rect.left &&
+            touch.clientX <= rect.right &&
+            touch.clientY >= rect.top &&
+            touch.clientY <= rect.bottom
+        ) {
+            targetLocation = dropzones[i].getAttribute('data-droptarget');
+            break;
+        }
+    }
+
+    if (targetLocation) {
+        setRiskPositions(prev => ({
+            ...prev,
+            [selectedPeriod]: {
+                ...prev[selectedPeriod],
+                [draggedItemId]: targetLocation
+            }
+        }));
     }
     setDraggedItemId(null); // Reset setelah selesai
   };
@@ -619,7 +643,6 @@ const App = () => {
   return (
     <div 
         className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800"
-        // Ditambahkan pendeteksi gerakan dan penghentian sentuhan di level global
         onTouchMove={draggedItemId ? handleTouchMove : undefined}
         onTouchEnd={draggedItemId ? handleTouchEnd : undefined}
     >
@@ -723,7 +746,7 @@ const App = () => {
               <span>Daftar Risiko Belum Terplot ({selectedPeriod})</span>
             </div>
             <div 
-              data-droptarget="pool" // Diubah: Menambahkan atribut target drop area untuk Mobile Touch
+              data-droptarget="pool"
               onDrop={(e) => handleDrop(e, 'pool')}
               onDragOver={handleDragOver}
               className="min-h-[120px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-wrap items-center justify-center gap-4 shadow-inner transition-all hover:border-indigo-400"
@@ -736,7 +759,7 @@ const App = () => {
                     id={id} 
                     text={riskInfo ? riskInfo.text : ""} 
                     onDragStart={handleDragStart} 
-                    onTouchStart={handleTouchStart} // Diubah: Menambahkan onTouchStart
+                    onTouchStart={handleTouchStart}
                   />
                 );
               })}
@@ -801,7 +824,7 @@ const App = () => {
                     return (
                       <td 
                         key={i} 
-                        data-droptarget={key} // Diubah: Menambahkan atribut target drop area sel ini untuk Mobile Touch
+                        data-droptarget={key}
                         onDrop={(e) => handleDrop(e, key)} 
                         onDragOver={handleDragOver} 
                         className={`border border-slate-200 h-32 relative p-2 transition-all group ${getCellColor(l, i)}`}
@@ -818,7 +841,7 @@ const App = () => {
                                     id={id} 
                                     text={riskInfo ? riskInfo.text : ""} 
                                     onDragStart={handleDragStart} 
-                                    onTouchStart={handleTouchStart} // Diubah: Menambahkan onTouchStart
+                                    onTouchStart={handleTouchStart}
                                 />
                             );
                           })}
@@ -1223,7 +1246,6 @@ const App = () => {
       </Modal>
 
       {/* --- VISUAL CLONE SAAT DRAG DI HP --- */}
-      {/* Diubah: Memunculkan elemen terbang saat digeser di HP */}
       {draggedItemId && (
         <div 
           className="fixed pointer-events-none z-[9999]"
