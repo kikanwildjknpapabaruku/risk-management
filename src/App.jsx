@@ -91,7 +91,7 @@ const initialRiskValues = {
   7: { py: 14, res: 11 },
   8: { py: 8, res: 5 },
   9: { py: 13, res: 10 },
-  10: { py: 13, res: 6 },
+  10: { py: 14, res: 6 },
   11: { py: 9, res: 12 },
   12: { py: 14, res: 11 },
   13: { py: 11, res: 5 },
