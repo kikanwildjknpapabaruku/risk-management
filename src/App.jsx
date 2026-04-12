@@ -819,7 +819,34 @@ const App = () => {
                   {impacts.map(i => {
                     const key = `${l}-${i}`;
                     const items = Object.keys(riskPositions[selectedPeriod]).filter(id => riskPositions[selectedPeriod][id] === key);
-                    const textColorClass = (l === 5 && i >= 4) || (l === 4 && i === 5) || (l === 3 && i === 5) || (l === 2 && i === 5) || (l === 1 && i === 5) ? 'text-white/40' : 'text-slate-800/20';
+                    const hasItems = items.length > 0;
+                    
+                    // Deteksi warna background untuk menyesuaikan warna outline 4D
+                    const isDarkBg = (l === 5 && i >= 4) || (l === 4 && i === 5) || (l === 3 && i === 5) || (l === 2 && i === 5) || (l === 1 && i === 5);
+                    
+                    // Gaya saat ada marker (Efek 4D Hologram melayang transparan)
+                    const activeNumberStyle = {
+                        fontSize: '6rem',
+                        lineHeight: '1',
+                        color: isDarkBg ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)', // Lebih transparan (nyaris bening)
+                        WebkitTextStroke: isDarkBg ? '2px rgba(255,255,255,0.3)' : '2px rgba(30,41,59,0.25)', // Garis luar lebih tipis dan transparan
+                        textShadow: isDarkBg 
+                            ? '2px 2px 0px rgba(0,0,0,0.2), 4px 4px 10px rgba(0,0,0,0.3)' 
+                            : '2px 2px 0px rgba(255,255,255,0.4), 4px 4px 10px rgba(0,0,0,0.15)', // Bayangan lebih soft agar tidak menggelapkan marker
+                        zIndex: 40, // Melayang di atas marker
+                        opacity: 0.35 // Opasitas keseluruhan turun menjadi 35% agar marker di bawahnya sangat jelas
+                    };
+
+                    // Gaya standar saat kosong
+                    const inactiveNumberStyle = {
+                        fontSize: '3rem',
+                        lineHeight: '1',
+                        color: isDarkBg ? 'rgba(255,255,255,0.4)' : 'rgba(30,41,59,0.2)',
+                        WebkitTextStroke: '0px transparent',
+                        textShadow: 'none',
+                        zIndex: 10, // Berada di belakang
+                        opacity: 1
+                    };
                     
                     return (
                       <td 
@@ -829,9 +856,14 @@ const App = () => {
                         onDragOver={handleDragOver} 
                         className={`border border-slate-200 h-32 relative p-2 transition-all group ${getCellColor(l, i)}`}
                       >
-                        <div className={`absolute inset-0 flex items-center justify-center text-5xl font-black pointer-events-none select-none transition-all ${textColorClass}`}>
+                        {/* --- MODIFIKASI: ANGKA BACKGROUND EFEK 4D --- */}
+                        <div 
+                          className="absolute inset-0 flex items-center justify-center font-black pointer-events-none select-none transition-all duration-500 ease-out"
+                          style={hasItems ? activeNumberStyle : inactiveNumberStyle}
+                        >
                           {bgNumbers[key]}
                         </div>
+
                         <div className="relative flex flex-wrap gap-2 justify-center items-center h-full z-20">
                           {items.map(id => {
                             const riskInfo = riskData.find(r => r.id === parseInt(id));
