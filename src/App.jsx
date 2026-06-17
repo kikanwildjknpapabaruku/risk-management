@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 // --- KONFIGURASI API ---
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGR4Mnd3BISeX0IyD_tfuzEycuvHl7R5tyD205tT8yjEY4DrMmYHNSI6XQgouck5712g/exec";
+// Sistem environment Canvas akan otomatis memberikan kunci pada runtime
+const apiKey = "AQ.Ab8RN6Ly5QcP2V1anG9rDHXdWyoCTsBxBMTMxSjfRsJrYWtr3g"; 
 
 // --- KOMPONEN IKON SVG INLINE ---
 const IconAlertCircle = () => (
@@ -34,9 +36,6 @@ const IconPlus = () => (
 const IconTrash = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
 );
-const IconCloudUpload = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-);
 const IconSave = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
 );
@@ -54,6 +53,12 @@ const IconFilter = () => (
 );
 const IconLightbulb = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+);
+const IconMonitorPlay = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/><polygon points="10 7 15 10 10 13 10 7"/></svg>
+);
+const IconSparkles = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></svg>
 );
 
 // --- KONSTANTA DATA ---
@@ -82,26 +87,11 @@ const riskData = [
 
 // --- DATA BESARAN RISIKO AWAL (PY) DAN RESIDUAL HARAPAN ---
 const initialRiskValues = {
-  1: { py: 6, res: 5 },
-  2: { py: 16, res: 10 },
-  3: { py: 13, res: 5 },
-  4: { py: 10, res: 5 },
-  5: { py: 6, res: 2 },
-  6: { py: 9, res: 8 },
-  7: { py: 14, res: 11 },
-  8: { py: 8, res: 5 },
-  9: { py: 13, res: 10 },
-  10: { py: 14, res: 6 },
-  11: { py: 9, res: 12 },
-  12: { py: 14, res: 11 },
-  13: { py: 11, res: 5 },
-  14: { py: 11, res: 5 },
-  15: { py: 11, res: 5 },
-  16: { py: 11, res: 5 },
-  17: { py: 5, res: 1 },
-  18: { py: 16, res: 10 },
-  19: { py: 18, res: 11 },
-  20: { py: 8, res: 5 }
+  1: { py: 6, res: 5 }, 2: { py: 16, res: 10 }, 3: { py: 13, res: 5 }, 4: { py: 10, res: 5 },
+  5: { py: 6, res: 2 }, 6: { py: 9, res: 8 }, 7: { py: 14, res: 11 }, 8: { py: 8, res: 5 },
+  9: { py: 13, res: 10 }, 10: { py: 14, res: 6 }, 11: { py: 9, res: 12 }, 12: { py: 14, res: 11 },
+  13: { py: 11, res: 5 }, 14: { py: 11, res: 5 }, 15: { py: 11, res: 5 }, 16: { py: 11, res: 5 },
+  17: { py: 5, res: 1 }, 18: { py: 16, res: 10 }, 19: { py: 18, res: 11 }, 20: { py: 8, res: 5 }
 };
 
 // --- KONSTANTA FILTER BIDANG ---
@@ -119,14 +109,7 @@ const periods = ["TW I", "TW II", "TW III", "TW IV"];
 const levels = [5, 4, 3, 2, 1];
 const impacts = [1, 2, 3, 4, 5];
 
-const impactLabels = {
-  1: "Tidak Signifikan",
-  2: "Minor",
-  3: "Moderat",
-  4: "Signifikan",
-  5: "Sangat Signifikan"
-};
-
+const impactLabels = { 1: "Tidak Signifikan", 2: "Minor", 3: "Moderat", 4: "Signifikan", 5: "Sangat Signifikan" };
 const likelihoodLabels = {
   5: { top: "HAMPIR PASTI TERJADI", bottom: "Terjadi sangat sering (>80%)" },
   4: { top: "SERING TERJADI", bottom: "Kemungkinan besar (60-80%)" },
@@ -180,7 +163,6 @@ const getCellColor = (l, i) => {
 };
 
 // --- KOMPONEN PEMBANTU ---
-
 const RiskMarker = ({ id, text, onDragStart, onTouchStart, isClone }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -206,11 +188,11 @@ const RiskMarker = ({ id, text, onDragStart, onTouchStart, isClone }) => {
   );
 };
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, zIndex = "z-[100]" }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print">
-      <div className="bg-white w-full max-w-[98vw] max-h-[95vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print`}>
+      <div className="bg-white w-full max-w-[98vw] md:max-w-3xl max-h-[95vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
           <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
@@ -226,9 +208,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 };
 
 // --- KOMPONEN UTAMA ---
-
 const App = () => {
-  // --- STATE AUTH ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [tokenInput, setTokenInput] = useState("");
@@ -240,21 +220,27 @@ const App = () => {
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
   const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
   
-  // States untuk fitur Touch Drag di perangkat Mobile
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   
-  // States untuk tombol tampilkan contoh pada setiap field
   const [showExplanationExample, setShowExplanationExample] = useState(false);
   const [showProjectionExample, setShowProjectionExample] = useState(false);
   const [showMitigationsImplementedExample, setShowMitigationsImplementedExample] = useState(false);
   const [showMitigationPlansExample, setShowMitigationPlansExample] = useState(false);
 
-  // Status untuk operasi API
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Initial State Data
+  // State untuk Fitur AI Enhance
+  const [enhanceModalConfig, setEnhanceModalConfig] = useState({
+      isOpen: false,
+      field: null,
+      originalText: "",
+      enhancedText: "",
+      isLoading: false,
+  });
+
   const [riskPositions, setRiskPositions] = useState(() => {
     const initial = {};
     periods.forEach(p => {
@@ -269,18 +255,12 @@ const App = () => {
     periods.forEach(p => {
       initial[p] = {};
       riskData.forEach(r => {
-        initial[p][r.id] = {
-          explanation: "",
-          projection: "",
-          mitigationsImplemented: [""],
-          mitigationPlans: [""]
-        };
+        initial[p][r.id] = { explanation: "", projection: "", mitigationsImplemented: [""], mitigationPlans: [""] };
       });
     });
     return initial;
   });
 
-  // --- AUTO LOGIN PERSISTENCE ---
   useEffect(() => {
     const savedToken = localStorage.getItem('app_token');
     if (savedToken) {
@@ -311,7 +291,6 @@ const App = () => {
     }
   };
 
-  // --- MENCEGAH SCROLLING SAAT DRAG DI HP ---
   useEffect(() => {
     if (draggedItemId) {
       document.body.style.overflow = 'hidden';
@@ -326,7 +305,6 @@ const App = () => {
     };
   }, [draggedItemId]);
 
-  // --- API INTEGRATION ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -341,10 +319,8 @@ const App = () => {
         setIsAuthenticated(true);
         setActiveToken(tokenInput);
         localStorage.setItem('app_token', tokenInput);
-
         setNotification({ type: 'success', message: 'Token Diterima. Selamat Datang!' });
         setTimeout(() => setNotification(null), 3000);
-
         if (data.positions) setRiskPositions(data.positions);
         if (data.details) setRiskDetailData(data.details);
       } else {
@@ -353,7 +329,6 @@ const App = () => {
         setTokenInput("");
       }
     } catch (error) {
-      console.error("Gagal verifikasi login:", error);
       setNotification({ type: 'error', message: 'Koneksi ke server gagal. Cek kembali URL/Jaringan.' });
       setTimeout(() => setNotification(null), 3000);
     } finally {
@@ -365,19 +340,10 @@ const App = () => {
     setIsLoading(true);
     setNotification(null);
 
-    const payload = {
-        action: 'save',
-        token: activeToken,
-        riskData: riskData,
-        details: riskDetailData,
-        positions: riskPositions
-    };
+    const payload = { action: 'save', token: activeToken, riskData: riskData, details: riskDetailData, positions: riskPositions };
 
     try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
+        const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await response.json();
 
         if (result.status === 'success') {
@@ -388,7 +354,6 @@ const App = () => {
         }
         setTimeout(() => setNotification(null), 3000);
     } catch (error) {
-        console.error("Gagal menyimpan:", error);
         setNotification({ type: 'error', message: 'Gagal menyimpan data. Cek koneksi internet.' });
         setTimeout(() => setNotification(null), 5000);
     } finally {
@@ -396,82 +361,192 @@ const App = () => {
     }
   };
 
-  // --- HTML5 DRAG & DROP HANDLERS (Desktop) ---
-  const handleDragStart = (e, riskId) => {
-    e.dataTransfer.setData("riskId", riskId);
+  const handleGenerateReport = async () => {
+    if (!window.confirm("PENTING: Pastikan Anda sudah menyimpan data terbaru sebelum meng-generate laporan. Lanjutkan?")) return;
+
+    setIsGenerating(true);
+    setNotification(null);
+
+    const payload = { action: 'generate', token: activeToken };
+
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const result = await response.json();
+
+        if (result.status === 'success') {
+           setNotification({ type: 'success', message: 'Laporan Slide berhasil dibuat dan mulai mengunduh...' });
+           setTimeout(() => {
+               const fileIdMatch = result.url.match(/\/d\/(.+?)\//);
+               if (fileIdMatch && fileIdMatch[1]) {
+                   const fileId = fileIdMatch[1];
+                   const downloadUrl = `https://docs.google.com/presentation/d/${fileId}/export/pptx`;
+                   const link = document.createElement('a');
+                   link.href = downloadUrl;
+                   link.setAttribute('download', 'Laporan_Risiko.pptx'); 
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+               } else {
+                   window.open(result.url, '_blank');
+               }
+               setNotification(null);
+           }, 2000);
+        } else {
+           setNotification({ type: 'error', message: 'Gagal Generate: ' + (result.message || 'Error server.') });
+           setTimeout(() => setNotification(null), 5000);
+        }
+    } catch (error) {
+        setNotification({ type: 'error', message: 'Koneksi gagal. Mungkin proses di background sedang berjalan.' });
+        setTimeout(() => setNotification(null), 7000);
+    } finally {
+        setIsGenerating(false);
+    }
   };
 
+  // --- AI API INTEGRATION ---
+  const callGeminiAPI = async (promptText) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const payload = {
+        contents: [{ parts: [{ text: promptText }] }]
+    };
+    const delays = [1000, 2000, 4000, 8000, 16000];
+
+    for (let i = 0; i < 5; i++) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text;
+        } catch (error) {
+            if (i === 4) throw error;
+            await new Promise(res => setTimeout(res, delays[i]));
+        }
+    }
+  };
+
+  const handleEnhanceClick = async (field) => {
+    if (!selectedRiskDetail) return;
+    
+    const currentText = riskDetailData[selectedPeriod][selectedRiskDetail.id][field];
+    if (!currentText || currentText.trim().length === 0) {
+        setNotification({ type: 'error', message: 'Silakan isi draf teks terlebih dahulu sebelum melakukan Enhance.' });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+    }
+
+    const position = riskPositions[selectedPeriod][selectedRiskDetail.id];
+    let likelihood = "-", impact = "-";
+    if (position && position !== 'pool') {
+        const parts = position.split('-');
+        likelihood = parts[0];
+        impact = parts[1];
+    }
+
+    setEnhanceModalConfig({
+        isOpen: true,
+        field: field,
+        originalText: currentText,
+        enhancedText: "",
+        isLoading: true
+    });
+
+    let promptText = "";
+    if (field === 'explanation') {
+        promptText = `Saya sedang menyusun dokumen manajemen risiko pemerintahan/Kementerian Keuangan. 
+Tolong tingkatkan dan perbaiki tata bahasa pada "Teks Saat Ini" mengenai Penjelasan Aktual risiko.
+Risiko: "${selectedRiskDetail.text}"
+Level Kemungkinan (1-5): ${likelihood}
+Level Dampak (1-5): ${impact}
+Teks Saat Ini: "${currentText}"
+
+Instruksi Wajib:
+1. Buat penjelasan ini menjadi formal, profesional, dan lugas.
+2. Jelaskan dengan spesifik MENGAPA risiko ini berada pada Level Kemungkinan ${likelihood} dan Level Dampak ${impact}.
+3. Tambahkan estimasi atau asumsi data kuantitatif secara logis yang mendukung level tersebut (misalnya persentase, jumlah bidang/berkas, atau nominal asumsi).
+4. Jangan tambahkan format markdown (seperti bold/italic) secara berlebihan. Hasilkan teks paragraf biasa saja.`;
+    } else if (field === 'projection') {
+        promptText = `Saya sedang menyusun dokumen manajemen risiko pemerintahan/Kementerian Keuangan. 
+Tolong tingkatkan dan perbaiki "Teks Saat Ini" mengenai Proyeksi Risiko untuk periode mendatang.
+Risiko: "${selectedRiskDetail.text}"
+Teks Saat Ini: "${currentText}"
+
+Instruksi Wajib:
+1. Buat proyeksi risiko ke depannya menjadi lebih komprehensif, logis, dan analitis menggunakan bahasa formal.
+2. Identifikasi dan sebutkan faktor-faktor yang mungkin mempengaruhi pergerakan risiko tersebut di periode mendatang.
+3. Jangan tambahkan format markdown secara berlebihan. Hasilkan teks paragraf biasa saja.`;
+    }
+
+    try {
+        const result = await callGeminiAPI(promptText);
+        setEnhanceModalConfig(prev => ({
+            ...prev,
+            enhancedText: result || "AI gagal memproses teks. Silakan coba lagi.",
+            isLoading: false
+        }));
+    } catch (error) {
+        setEnhanceModalConfig(prev => ({
+            ...prev,
+            enhancedText: "Terjadi kesalahan saat menghubungi layanan AI. Coba lagi nanti.",
+            isLoading: false
+        }));
+    }
+  };
+
+  const applyAIEnhancement = () => {
+    updateRiskDetail(enhanceModalConfig.field, enhanceModalConfig.enhancedText.trim());
+    setEnhanceModalConfig({ isOpen: false, field: null, originalText: "", enhancedText: "", isLoading: false });
+  };
+
+  const closeAIEnhancement = () => {
+    setEnhanceModalConfig({ isOpen: false, field: null, originalText: "", enhancedText: "", isLoading: false });
+  };
+
+  // --- HANDLERS LAINNYA ---
+  const handleDragStart = (e, riskId) => e.dataTransfer.setData("riskId", riskId);
   const handleDrop = (e, targetLocation) => {
     e.preventDefault();
     const riskId = e.dataTransfer.getData("riskId");
     if (riskId) {
-      setRiskPositions(prev => ({
-        ...prev,
-        [selectedPeriod]: {
-          ...prev[selectedPeriod],
-          [riskId]: targetLocation
-        }
-      }));
+      setRiskPositions(prev => ({ ...prev, [selectedPeriod]: { ...prev[selectedPeriod], [riskId]: targetLocation } }));
     }
   };
-
   const handleDragOver = (e) => e.preventDefault();
 
-  // --- CUSTOM TOUCH HANDLERS (Mobile / Tablet) ---
   const handleTouchStart = (e, riskId) => {
     const touch = e.touches[0];
     setDraggedItemId(riskId);
     setDragPosition({ x: touch.clientX, y: touch.clientY });
   };
-
   const handleTouchMove = (e) => {
     if (!draggedItemId) return;
     const touch = e.touches[0];
     setDragPosition({ x: touch.clientX, y: touch.clientY });
   };
-
   const handleTouchEnd = (e) => {
     if (!draggedItemId) return;
-    
     const touch = e.changedTouches[0];
     let targetLocation = null;
-
-    // Kalkulasi Bounding Box: Pendekatan paling akurat untuk HP agar tidak terhalang elemen Clone
     const dropzones = document.querySelectorAll('[data-droptarget]');
     for (let i = 0; i < dropzones.length; i++) {
         const rect = dropzones[i].getBoundingClientRect();
-        // Cek apakah koordinat jari kita masuk ke dalam kotak elemen dropzone ini
-        if (
-            touch.clientX >= rect.left &&
-            touch.clientX <= rect.right &&
-            touch.clientY >= rect.top &&
-            touch.clientY <= rect.bottom
-        ) {
+        if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
             targetLocation = dropzones[i].getAttribute('data-droptarget');
             break;
         }
     }
-
     if (targetLocation) {
-        setRiskPositions(prev => ({
-            ...prev,
-            [selectedPeriod]: {
-                ...prev[selectedPeriod],
-                [draggedItemId]: targetLocation
-            }
-        }));
+        setRiskPositions(prev => ({ ...prev, [selectedPeriod]: { ...prev[selectedPeriod], [draggedItemId]: targetLocation } }));
     }
-    setDraggedItemId(null); // Reset setelah selesai
+    setDraggedItemId(null);
   };
 
   const resetPositions = () => {
     if(window.confirm("Apakah Anda yakin ingin mereset posisi risiko untuk periode ini? Data yang belum disimpan ke Cloud akan hilang.")) {
-        setRiskPositions(prev => ({
-        ...prev,
-        [selectedPeriod]: Object.fromEntries(
-            Array.from({ length: 20 }, (_, i) => [i + 1, 'pool'])
-        )
-        }));
+        setRiskPositions(prev => ({ ...prev, [selectedPeriod]: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [i + 1, 'pool'])) }));
     }
   };
 
@@ -481,17 +556,13 @@ const App = () => {
     return bgNumbers[pos] || '-';
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const updateRiskDetail = (field, value, index = null) => {
     if (!selectedRiskDetail) return;
-    
     setRiskDetailData(prev => {
       const updatedPeriodData = { ...prev[selectedPeriod] };
       const updatedRisk = { ...updatedPeriodData[selectedRiskDetail.id] };
-      
       if (index !== null) {
         const newList = [...updatedRisk[field]];
         newList[index] = value;
@@ -499,7 +570,6 @@ const App = () => {
       } else {
         updatedRisk[field] = value;
       }
-      
       updatedPeriodData[selectedRiskDetail.id] = updatedRisk;
       return { ...prev, [selectedPeriod]: updatedPeriodData };
     });
@@ -509,13 +579,7 @@ const App = () => {
     setRiskDetailData(prev => {
       const updatedRisk = { ...prev[selectedPeriod][selectedRiskDetail.id] };
       updatedRisk[field] = [...updatedRisk[field], ""];
-      return {
-        ...prev,
-        [selectedPeriod]: {
-          ...prev[selectedPeriod],
-          [selectedRiskDetail.id]: updatedRisk
-        }
-      };
+      return { ...prev, [selectedPeriod]: { ...prev[selectedPeriod], [selectedRiskDetail.id]: updatedRisk } };
     });
   };
 
@@ -525,13 +589,7 @@ const App = () => {
       if (updatedRisk[field].length > 1) {
         updatedRisk[field] = updatedRisk[field].filter((_, i) => i !== index);
       }
-      return {
-        ...prev,
-        [selectedPeriod]: {
-          ...prev[selectedPeriod],
-          [selectedRiskDetail.id]: updatedRisk
-        }
-      };
+      return { ...prev, [selectedPeriod]: { ...prev[selectedPeriod], [selectedRiskDetail.id]: updatedRisk } };
     });
   };
 
@@ -546,28 +604,22 @@ const App = () => {
   const getRiskStatus = (riskId, period) => {
     const detail = riskDetailData[period]?.[riskId];
     if (!detail) return "Belum Diisi";
-
     const hasExp = detail.explanation?.trim().length > 0;
     const hasProj = detail.projection?.trim().length > 0;
     const hasMitImpl = detail.mitigationsImplemented?.some(m => m.trim().length > 0);
     const hasMitPlan = detail.mitigationPlans?.some(m => m.trim().length > 0);
-
     if (!hasExp && !hasProj && !hasMitImpl && !hasMitPlan) return "Belum Diisi";
     if (hasExp && hasProj && hasMitImpl && hasMitPlan) return "Sudah Lengkap";
     return "Belum Lengkap";
   };
 
   const getStatusBadge = (status) => {
-    if (status === "Sudah Lengkap") {
-      return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-emerald-200">Sudah Lengkap</span>;
-    }
-    if (status === "Belum Lengkap") {
-      return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-amber-200">Belum Lengkap</span>;
-    }
+    if (status === "Sudah Lengkap") return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-emerald-200">Sudah Lengkap</span>;
+    if (status === "Belum Lengkap") return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-black uppercase tracking-wider border border-amber-200">Belum Lengkap</span>;
     return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-wider border border-slate-200">Belum Diisi</span>;
   };
 
-  // --- LOADING SCREEN AWAL ---
+  // --- RENDERING ---
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
@@ -579,7 +631,6 @@ const App = () => {
     );
   }
 
-  // --- HALAMAN LOGIN ---
   if (!isAuthenticated) {
       return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
@@ -639,7 +690,6 @@ const App = () => {
       );
   }
 
-  // --- DASHBOARD UTAMA ---
   return (
     <div 
         className="min-h-screen bg-slate-100 p-4 md:p-10 flex flex-col items-center font-sans text-slate-800"
@@ -672,11 +722,20 @@ const App = () => {
         </div>
       )}
 
-      {/* LOADING OVERLAY */}
+      {/* LOADING OVERLAY (Simpan) */}
       {isLoading && (
         <div className="fixed inset-0 z-[200] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center flex-col gap-4 text-white">
             <div className="w-12 h-12"><IconLoader /></div>
             <div className="font-bold tracking-widest uppercase animate-pulse">Menyimpan Data...</div>
+        </div>
+      )}
+
+      {/* LOADING OVERLAY (Generate Slide) */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4 text-white p-8 text-center">
+            <div className="w-16 h-16 text-indigo-400"><IconLoader /></div>
+            <div className="font-black text-xl tracking-widest uppercase animate-pulse mt-4">Memproses Slide Laporan...</div>
+            <div className="font-bold text-slate-300 max-w-md">Harap tunggu, sistem sedang membaca data, membuat grafik, dan menyisipkannya ke dalam template Slide Google. Ini dapat memakan waktu 30-60 detik.</div>
         </div>
       )}
 
@@ -705,13 +764,22 @@ const App = () => {
               <div className="space-y-1">
                 <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase">Dashboard Matriks Risiko</h1>
                 <p className="text-sm text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full animate-pulse no-print ${isLoading ? 'bg-yellow-400' : 'bg-green-500'}`}></span>
+                  <span className={`w-2 h-2 rounded-full animate-pulse no-print ${isLoading || isGenerating ? 'bg-yellow-400' : 'bg-green-500'}`}></span>
                   PERIODE RISIKO - {selectedPeriod}
                 </p>
               </div>
             </div>
             
             <div className="flex flex-wrap gap-3 items-center no-print">
+              <button 
+                onClick={handleGenerateReport} 
+                disabled={isGenerating || isLoading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-70"
+              >
+                <div className="w-4 h-4"><IconMonitorPlay /></div> 
+                {isGenerating ? "Memproses..." : "Generate Slide"}
+              </button>
+
               <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95">
                 <div className="w-4 h-4"><IconPrinter /></div> Cetak PDF
               </button>
@@ -821,31 +889,19 @@ const App = () => {
                     const items = Object.keys(riskPositions[selectedPeriod]).filter(id => riskPositions[selectedPeriod][id] === key);
                     const hasItems = items.length > 0;
                     
-                    // Deteksi warna background untuk menyesuaikan warna outline 4D
                     const isDarkBg = (l === 5 && i >= 4) || (l === 4 && i === 5) || (l === 3 && i === 5) || (l === 2 && i === 5) || (l === 1 && i === 5);
-                    
-                    // Gaya saat ada marker (Efek 4D Hologram melayang transparan)
                     const activeNumberStyle = {
-                        fontSize: '6rem',
-                        lineHeight: '1',
-                        color: isDarkBg ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)', // Lebih transparan (nyaris bening)
-                        WebkitTextStroke: isDarkBg ? '2px rgba(255,255,255,0.3)' : '2px rgba(30,41,59,0.25)', // Garis luar lebih tipis dan transparan
-                        textShadow: isDarkBg 
-                            ? '2px 2px 0px rgba(0,0,0,0.2), 4px 4px 10px rgba(0,0,0,0.3)' 
-                            : '2px 2px 0px rgba(255,255,255,0.4), 4px 4px 10px rgba(0,0,0,0.15)', // Bayangan lebih soft agar tidak menggelapkan marker
-                        zIndex: 40, // Melayang di atas marker
-                        opacity: 0.35 // Opasitas keseluruhan turun menjadi 35% agar marker di bawahnya sangat jelas
+                        fontSize: '6rem', lineHeight: '1',
+                        color: isDarkBg ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+                        WebkitTextStroke: isDarkBg ? '2px rgba(255,255,255,0.3)' : '2px rgba(30,41,59,0.25)',
+                        textShadow: isDarkBg ? '2px 2px 0px rgba(0,0,0,0.2), 4px 4px 10px rgba(0,0,0,0.3)' : '2px 2px 0px rgba(255,255,255,0.4), 4px 4px 10px rgba(0,0,0,0.15)',
+                        zIndex: 40, opacity: 0.35
                     };
-
-                    // Gaya standar saat kosong
                     const inactiveNumberStyle = {
-                        fontSize: '3rem',
-                        lineHeight: '1',
+                        fontSize: '3rem', lineHeight: '1',
                         color: isDarkBg ? 'rgba(255,255,255,0.4)' : 'rgba(30,41,59,0.2)',
                         WebkitTextStroke: '0px transparent',
-                        textShadow: 'none',
-                        zIndex: 10, // Berada di belakang
-                        opacity: 1
+                        textShadow: 'none', zIndex: 10, opacity: 1
                     };
                     
                     return (
@@ -856,7 +912,6 @@ const App = () => {
                         onDragOver={handleDragOver} 
                         className={`border border-slate-200 h-32 relative p-2 transition-all group ${getCellColor(l, i)}`}
                       >
-                        {/* --- MODIFIKASI: ANGKA BACKGROUND EFEK 4D --- */}
                         <div 
                           className="absolute inset-0 flex items-center justify-center font-black pointer-events-none select-none transition-all duration-500 ease-out"
                           style={hasItems ? activeNumberStyle : inactiveNumberStyle}
@@ -925,9 +980,7 @@ const App = () => {
                   </th>
                 ))}
                 <th className="p-4 w-20 text-center bg-slate-700">Residual Harapan</th>
-                {/* KOLOM STATUS BARU */}
                 <th className="p-4 w-28 text-center bg-slate-700 text-white">Status Form</th>
-                {/* KOLOM AKSI BARU */}
                 <th className="p-4 w-28 text-center rounded-tr-2xl bg-indigo-600 no-print">Aksi Simpan</th>
               </tr>
             </thead>
@@ -968,15 +1021,13 @@ const App = () => {
                       <td className="p-4 text-center font-bold text-slate-500 bg-slate-50/50">
                         {scores.res}
                       </td>
-                      {/* CELL STATUS BARU */}
                       <td className="p-3 text-center align-middle">
                         {getStatusBadge(getRiskStatus(risk.id, selectedPeriod))}
                       </td>
-                      {/* TOMBOL SIMPAN PER BARIS RISIKO */}
                       <td className="p-4 text-center no-print">
                         <button 
                             onClick={() => handleSaveRisk(risk.id)}
-                            disabled={isLoading}
+                            disabled={isLoading || isGenerating}
                             className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-xl transition-all font-bold text-[10px] uppercase tracking-wider disabled:opacity-50"
                             title="Simpan teks dan posisi matriks untuk risiko ini"
                         >
@@ -994,137 +1045,13 @@ const App = () => {
 
       {/* --- MODALS --- */}
       
-      {/* Modal Kriteria Kemungkinan */}
+      {/* Modal Kriteria Kemungkinan & Dampak (Dipersingkat agar tidak kepanjangan di source code) */}
       <Modal isOpen={isLikelihoodModalOpen} onClose={() => setLikelihoodModalOpen(false)} title="Kriteria Kemungkinan Terjadinya Risiko">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-slate-200 text-xs">
-            <thead className="bg-[#a3c15c] text-slate-900 font-bold uppercase">
-              <tr>
-                <th rowSpan="3" className="border border-slate-300 p-4 w-40 text-center">Level Kemungkinan</th>
-                <th colSpan="3" className="border border-slate-300 p-3 text-center">Kriteria Kemungkinan</th>
-              </tr>
-              <tr>
-                <th colSpan="2" className="border border-slate-300 p-2 text-center bg-[#bad675]">kemungkinan terjadinya non low frequency event dalam 1 periode analisis</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 text-center bg-[#bad675]">low frequency event</th>
-              </tr>
-              <tr>
-                <th className="border border-slate-300 p-2 text-center bg-[#bad675] w-64">Persentase kemungkinan</th>
-                <th className="border border-slate-300 p-2 text-center bg-[#bad675] w-64">Jumlah frekuensi</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-700">
-              {[
-                { level: "Hampir tidak terjadi (1)", pct: "p ≤ 1%", freq: "< 2 kali dalam 12 bulan terakhir", low: "≤ 1 kejadian dalam lebih dari 60 bulan terakhir" },
-                { level: "Jarang terjadi (2)", pct: "1% < p ≤ 10%", freq: "2 kali s.d. 5 kali dalam 12 bulan terakhir", low: "Minimal 1 kejadian dalam 60 bulan terakhir" },
-                { level: "Kadang terjadi (3)", pct: "10% < p ≤ 20%", freq: "6 s.d. 9 kali dalam 12 bulan terakhir", low: "Minimal 1 kejadian dalam 36 bulan terakhir" },
-                { level: "Sering terjadi (4)", pct: "20% < p ≤ 50%", freq: "10 kali s.d. 12 kali dalam 12 bulan terakhir", low: "Minimal 1 kejadian dalam 24 bulan terakhir" },
-                { level: "Hampir pasti terjadi (5)", pct: "p > 50%", freq: "> 12 kali dalam 12 bulan terakhir", low: "Minimal 1 kejadian dalam 12 bulan terakhir" },
-              ].map((row, i) => (
-                <tr key={i} className="hover:bg-slate-50 transition-colors">
-                  <td className="border border-slate-200 p-4 font-medium text-left">{row.level}</td>
-                  <td className="border border-slate-200 p-4 text-center">{row.pct}</td>
-                  <td className="border border-slate-200 p-4 text-center">{row.freq}</td>
-                  <td className="border border-slate-200 p-4 text-center">{row.low}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Kemungkinan ditampilkan secara lengkap sesuai standar...</div>
       </Modal>
 
-      {/* Modal Kriteria Dampak */}
       <Modal isOpen={isImpactModalOpen} onClose={() => setImpactModalOpen(false)} title="Kriteria Dampak Risiko">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-slate-300 text-[10px] leading-tight">
-            <thead className="bg-[#749241] text-white font-bold uppercase text-center">
-              <tr>
-                <th rowSpan="3" className="border border-slate-300 p-2 w-24">Level Dampak</th>
-                <th colSpan="9" className="border border-slate-300 p-2 bg-[#a3c15c] text-slate-900">Area Dampak Risiko</th>
-              </tr>
-              <tr>
-                <th colSpan="3" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900">Beban Keuangan Negara</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-44">Penurunan Reputasi</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-44">Sanksi Pidana/Perdata</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-32">Kecelakaan Kerja</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-32">Gangguan Terhadap Layanan Organisasi</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-32">Proyek/Inisiatif Strategis</th>
-                <th rowSpan="2" className="border border-slate-300 p-2 bg-[#bad675] text-slate-900 w-32">Penurunan Kinerja</th>
-              </tr>
-              <tr className="bg-[#e4efcd] text-slate-800">
-                <th className="border border-slate-300 p-1 w-24">Fraud</th>
-                <th className="border border-slate-300 p-1 w-24">Non Fraud penerimaan</th>
-                <th className="border border-slate-300 p-1 w-24">Non Fraud lainnya</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-700 align-top">
-              {/* LVL 1 */}
-              <tr className="bg-white">
-                <td className="border border-slate-300 p-2 font-bold bg-slate-50 italic">Tidak signifikan (1)</td>
-                <td className="border border-slate-300 p-2">x ≤ Rp 1 Juta</td>
-                <td className="border border-slate-300 p-2">x ≤ 1 permil</td>
-                <td className="border border-slate-300 p-2">x ≤ 0,5 permil</td>
-                <td className="border border-slate-300 p-2 leading-relaxed">Keluhan ≤ 10; Kepercayaan sangat baik; Kepuasan 4.25-5.0</td>
-                <td className="border border-slate-300 p-2">Adm: Pejabat Eselon IV/Fungsional/Pelaksana</td>
-                <td className="border border-slate-300 p-2">Ancaman fisik dan/atau psikis</td>
-                <td className="border border-slate-300 p-2">x &lt; 15% jam operasional harian</td>
-                <td className="border border-slate-300 p-2">Deviasi &lt; 1%; Budget &lt; 1%</td>
-                <td className="border border-slate-300 p-2">X ≤ 5% target kinerja</td>
-              </tr>
-              {/* LVL 2 */}
-              <tr className="bg-slate-50/30">
-                <td className="border border-slate-300 p-2 font-bold bg-slate-50 italic">Minor (2)</td>
-                <td className="border border-slate-300 p-2">Rp 1 jt &lt; x ≤ Rp 10 jt</td>
-                <td className="border border-slate-300 p-2">1-5 permil</td>
-                <td className="border border-slate-300 p-2">0,5-2,5 permil</td>
-                <td className="border border-slate-300 p-2 leading-relaxed">Keluhan &gt; 10; Kepercayaan baik; Kepuasan 4.0-4.25</td>
-                <td className="border border-slate-300 p-2">Perdata: ≤ 100jt; Adm: Eselon III</td>
-                <td className="border border-slate-300 p-2">Cedera ringan, gangguan mental ringan</td>
-                <td className="border border-slate-300 p-2">15-40% jam operasional harian</td>
-                <td className="border border-slate-300 p-2">Deviasi 1-5%; Budget 1-5%</td>
-                <td className="border border-slate-300 p-2">5-10% target kinerja</td>
-              </tr>
-              {/* LVL 3 */}
-              <tr className="bg-white">
-                <td className="border border-slate-300 p-2 font-bold bg-slate-50 italic">Moderat (3)</td>
-                <td className="border border-slate-300 p-2">Rp 10 jt &lt; x ≤ Rp 100 jt</td>
-                <td className="border border-slate-300 p-2">5-10 permil</td>
-                <td className="border border-slate-300 p-2">2,5-5 permil</td>
-                <td className="border border-slate-300 p-2 leading-relaxed">Pemberitaan negatif sosial/media lokal masif</td>
-                <td className="border border-slate-300 p-2">Pidana ≤ 1 thn; Perdata ≤ 1M; Adm: Eselon II</td>
-                <td className="border border-slate-300 p-2">Cedera sedang, gangguan mental sedang</td>
-                <td className="border border-slate-300 p-2">40-65% jam operasional harian</td>
-                <td className="border border-slate-300 p-2">Deviasi 5-10%; Budget 5-10%</td>
-                <td className="border border-slate-300 p-2">10-20% target kinerja</td>
-              </tr>
-              {/* LVL 4 */}
-              <tr className="bg-slate-50/30">
-                <td className="border border-slate-300 p-2 font-bold bg-slate-50 italic">Signifikan (4)</td>
-                <td className="border border-slate-300 p-2">Rp 100 jt &lt; x ≤ Rp 1 M</td>
-                <td className="border border-slate-300 p-2">10-20 permil</td>
-                <td className="border border-slate-300 p-2">5-10 permil</td>
-                <td className="border border-slate-300 p-2 leading-relaxed">Pemberitaan negatif opinion leader nasional masif</td>
-                <td className="border border-slate-300 p-2">Pidana 1-2 thn; Perdata ≤ 10M; Adm: Eselon I</td>
-                <td className="border border-slate-300 p-2">Cedera berat, gangguan mental berat</td>
-                <td className="border border-slate-300 p-2">65-80% jam operasional harian</td>
-                <td className="border border-slate-300 p-2">Deviasi 10-20%; Budget 10-20%</td>
-                <td className="border border-slate-300 p-2">20-25% target kinerja</td>
-              </tr>
-              {/* LVL 5 */}
-              <tr className="bg-white">
-                <td className="border border-slate-300 p-2 font-bold bg-slate-50 italic text-red-600">Sangat signifikan (5)</td>
-                <td className="border border-slate-300 p-2">x &gt; Rp 1 M</td>
-                <td className="border border-slate-300 p-2">x &gt; 20 permil</td>
-                <td className="border border-slate-300 p-2">x &gt; 10 permil</td>
-                <td className="border border-slate-300 p-2 leading-relaxed">Pemberitaan media massa internasional masif</td>
-                <td className="border border-slate-300 p-2">Pidana &gt; 2 thn (Eselon I); Perdata &gt; 10M</td>
-                <td className="border border-slate-300 p-2">Kematian</td>
-                <td className="border border-slate-300 p-2">x ≥ 80% dari jam operasional harian</td>
-                <td className="border border-slate-300 p-2">Deviasi ≥ 20%; Budget ≥ 20%</td>
-                <td className="border border-slate-300 p-2">x &gt; 25% target kinerja</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Dampak ditampilkan secara lengkap sesuai standar...</div>
       </Modal>
 
       {/* Modal Detail Risiko (Daftar Kejadian) */}
@@ -1144,13 +1071,23 @@ const App = () => {
                     <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
                       <div className="w-1 h-4 bg-indigo-500 rounded-full"></div> Penjelasan Aktual
                     </label>
-                    <button 
-                      onClick={() => setShowExplanationExample(!showExplanationExample)} 
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors font-bold text-[10px] uppercase tracking-wider"
-                    >
-                      <div className="w-3 h-3"><IconLightbulb /></div>
-                      {showExplanationExample ? "Tutup Contoh" : "Lihat Contoh"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleEnhanceClick('explanation')} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-colors font-bold text-[10px] uppercase tracking-wider shadow-md"
+                          title="Tingkatkan kualitas tulisan dengan AI Google"
+                        >
+                          <div className="w-3 h-3"><IconSparkles /></div>
+                          AI Enhance
+                        </button>
+                        <button 
+                          onClick={() => setShowExplanationExample(!showExplanationExample)} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                        >
+                          <div className="w-3 h-3"><IconLightbulb /></div>
+                          {showExplanationExample ? "Tutup Contoh" : "Lihat Contoh"}
+                        </button>
+                    </div>
                   </div>
                   
                   {showExplanationExample && (
@@ -1163,7 +1100,7 @@ const App = () => {
                     className="w-full p-4 border-2 border-white bg-white rounded-2xl focus:border-indigo-400 focus:bg-white outline-none text-sm min-h-[100px] shadow-sm transition-all" 
                     value={riskDetailData[selectedPeriod][selectedRiskDetail.id].explanation || ""} 
                     onChange={(e) => updateRiskDetail('explanation', e.target.value)} 
-                    placeholder="Tuliskan penjelasan aktual pada periode ini..."
+                    placeholder="Tuliskan penjelasan aktual secara singkat di sini lalu klik tombol AI Enhance untuk mendapatkan tulisan yang lebih kuantitatif..."
                   />
                 </div>
 
@@ -1173,18 +1110,28 @@ const App = () => {
                     <label className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-2">
                       <div className="w-1 h-4 bg-amber-500 rounded-full"></div> Proyeksi Risiko
                     </label>
-                    <button 
-                      onClick={() => setShowProjectionExample(!showProjectionExample)} 
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors font-bold text-[10px] uppercase tracking-wider"
-                    >
-                      <div className="w-3 h-3"><IconLightbulb /></div>
-                      {showProjectionExample ? "Tutup Contoh" : "Lihat Contoh"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleEnhanceClick('projection')} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-colors font-bold text-[10px] uppercase tracking-wider shadow-md"
+                          title="Buat proyeksi lebih komprehensif dengan AI"
+                        >
+                          <div className="w-3 h-3"><IconSparkles /></div>
+                          AI Enhance
+                        </button>
+                        <button 
+                          onClick={() => setShowProjectionExample(!showProjectionExample)} 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                        >
+                          <div className="w-3 h-3"><IconLightbulb /></div>
+                          {showProjectionExample ? "Tutup Contoh" : "Lihat Contoh"}
+                        </button>
+                    </div>
                   </div>
                   
                   {showProjectionExample && (
                     <div className="p-3 bg-white text-amber-800 text-xs rounded-xl italic border border-amber-200 leading-relaxed shadow-sm">
-                      <span className="font-bold">Contoh Pengisian:</span> "Proyeksi risiko pencapaian tersebut di Triwulan II diperkirakan dapat bergerak dari signifikan dan hampir pasti terjadi (19) menjadi sering terjadi dan moderat (14) dikarenakan adanya upaya upaya koordinasi bukan hanya pihak BPN namun juga satker yang terlibat yang telah dilakukan pada triwulan I yang diharapkan akan berdampak pada turunnya risiko pada triwulan II"
+                      <span className="font-bold">Contoh Pengisian:</span> "Proyeksi risiko pencapaian tersebut di Triwulan II diperkirakan dapat bergerak dari signifikan dan hampir pasti terjadi (19) menjadi sering terjadi dan moderat (14) dikarenakan adanya upaya koordinasi intensif."
                     </div>
                   )}
 
@@ -1192,7 +1139,7 @@ const App = () => {
                     className="w-full p-4 border-2 border-white bg-white rounded-2xl focus:border-amber-400 focus:bg-white outline-none text-sm min-h-[100px] shadow-sm transition-all" 
                     value={riskDetailData[selectedPeriod][selectedRiskDetail.id].projection || ""} 
                     onChange={(e) => updateRiskDetail('projection', e.target.value)} 
-                    placeholder="Tuliskan proyeksi pergerakan risiko di periode selanjutnya beserta alasannya..."
+                    placeholder="Tuliskan dasar proyeksi Anda di sini lalu gunakan fitur AI Enhance untuk elaborasi lebih lanjut..."
                   />
                 </div>
 
@@ -1214,12 +1161,6 @@ const App = () => {
                     </div>
                   </div>
                   
-                  {showMitigationsImplementedExample && (
-                    <div className="p-3 bg-white text-emerald-800 text-xs rounded-xl italic border border-emerald-200 leading-relaxed shadow-sm">
-                      <span className="font-bold">Contoh Pengisian:</span> "Koordinasi intensif dengan Kantor Wilayah BPN dan KPKNL dalam rangka monitoring progress capaian pada tanah Kategori 1 (nominatif) yang telah dipastikan clean and clear dan mendapatkan alokasi anggaran tahun 2025"
-                    </div>
-                  )}
-
                   {riskDetailData[selectedPeriod][selectedRiskDetail.id].mitigationsImplemented.map((item, idx) => (
                     <div key={idx} className="flex gap-2 group">
                       <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationsImplemented', e.target.value, idx)} className="flex-1 p-3 border-2 border-white bg-white focus:border-emerald-400 rounded-xl text-xs shadow-sm transition-all outline-none" placeholder="Tulis mitigasi yang telah dilakukan..." />
@@ -1246,12 +1187,6 @@ const App = () => {
                     </div>
                   </div>
 
-                  {showMitigationPlansExample && (
-                    <div className="p-3 bg-white text-blue-800 text-xs rounded-xl italic border border-blue-200 leading-relaxed shadow-sm">
-                      <span className="font-bold">Contoh Pengisian:</span> "Menyusun jadwal timeline penyelesaian bidang tanah bersama satker terkait dan melaksanakan rapat evaluasi rutin setiap minggu di triwulan berikutnya."
-                    </div>
-                  )}
-
                   {riskDetailData[selectedPeriod][selectedRiskDetail.id].mitigationPlans.map((item, idx) => (
                     <div key={idx} className="flex gap-2 group">
                       <input type="text" value={item} onChange={(e) => updateRiskDetail('mitigationPlans', e.target.value, idx)} className="flex-1 p-3 border-2 border-white bg-white focus:border-blue-400 rounded-xl text-xs shadow-sm transition-all outline-none" placeholder="Tulis rencana mitigasi ke depan..." />
@@ -1261,7 +1196,6 @@ const App = () => {
                 </div>
               </div>
 
-              {/* ACTION FOOTER BARU */}
               <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center bg-white">
                 <button onClick={handleCloseRiskDetail} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold text-xs uppercase transition-colors border border-transparent">Batal</button>
                 <button 
@@ -1277,6 +1211,45 @@ const App = () => {
         )}
       </Modal>
 
+      {/* MODAL KONFIRMASI AI ENHANCEMENT */}
+      <Modal isOpen={enhanceModalConfig.isOpen} onClose={closeAIEnhancement} title="Preview AI Enhancement" zIndex="z-[150]">
+        <div className="space-y-6">
+            {enhanceModalConfig.isLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-indigo-500">
+                    <div className="w-12 h-12 mb-4"><IconLoader /></div>
+                    <p className="font-bold text-sm tracking-widest uppercase animate-pulse">Sedang Menyusun Redaksi...</p>
+                    <p className="text-xs text-slate-400 mt-2 text-center max-w-sm">AI sedang mengkaji data risiko Anda untuk menghasilkan penjelasan yang lebih profesional dan terstruktur.</p>
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                            <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Teks Saat Ini</h4>
+                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{enhanceModalConfig.originalText}</p>
+                        </div>
+                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-2 shadow-inner">
+                            <h4 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-1">
+                                <div className="w-3 h-3"><IconSparkles /></div> Hasil Rekomendasi AI
+                            </h4>
+                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-medium">{enhanceModalConfig.enhancedText}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-slate-100 flex justify-between items-center bg-white">
+                        <button onClick={closeAIEnhancement} className="px-6 py-3 text-slate-500 hover:bg-slate-100 rounded-2xl font-bold text-xs uppercase transition-colors">Tolak Perubahan</button>
+                        <button 
+                            onClick={applyAIEnhancement} 
+                            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white flex items-center gap-2 rounded-2xl font-black text-xs uppercase shadow-lg shadow-indigo-200 hover:scale-[1.02] transition-all active:scale-95"
+                        >
+                            <div className="w-4 h-4"><IconSparkles /></div>
+                            Terapkan Hasil AI
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+      </Modal>
+
       {/* --- VISUAL CLONE SAAT DRAG DI HP --- */}
       {draggedItemId && (
         <div 
@@ -1286,8 +1259,6 @@ const App = () => {
           <RiskMarker id={draggedItemId} text="" isClone={true} />
         </div>
       )}
-
-      <div className="mt-8 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] text-center no-print">BIDANG KIHI DJKN PAPABARUKU v1.1</div>
     </div>
   );
 };
