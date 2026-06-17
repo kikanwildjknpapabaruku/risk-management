@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 // --- KONFIGURASI API ---
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGR4Mnd3BISeX0IyD_tfuzEycuvHl7R5tyD205tT8yjEY4DrMmYHNSI6XQgouck5712g/exec";
 // Sistem environment Canvas akan otomatis memberikan kunci pada runtime
-const apiKey = "AQ.Ab8RN6Ly5QcP2V1anG9rDHXdWyoCTsBxBMTMxSjfRsJrYWtr3g"; 
+const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
 
 // --- KOMPONEN IKON SVG INLINE ---
 const IconAlertCircle = () => (
