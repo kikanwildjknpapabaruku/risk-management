@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 
 // --- KONFIGURASI API ---
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGR4Mnd3BISeX0IyD_tfuzEycuvHl7R5tyD205tT8yjEY4DrMmYHNSI6XQgouck5712g/exec";
-// Sistem environment Canvas akan otomatis memberikan kunci pada runtime
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 // --- KOMPONEN IKON SVG INLINE ---
 const IconAlertCircle = () => (
@@ -85,7 +83,6 @@ const riskData = [
   { id: 20, text: "Laporan Kinerja dan Risiko disampaikan terlambat/tidak sesuai ketentuan" }
 ];
 
-// --- DATA BESARAN RISIKO AWAL (PY) DAN RESIDUAL HARAPAN ---
 const initialRiskValues = {
   1: { py: 6, res: 5 }, 2: { py: 16, res: 10 }, 3: { py: 13, res: 5 }, 4: { py: 10, res: 5 },
   5: { py: 6, res: 2 }, 6: { py: 9, res: 8 }, 7: { py: 14, res: 11 }, 8: { py: 8, res: 5 },
@@ -94,7 +91,6 @@ const initialRiskValues = {
   17: { py: 5, res: 1 }, 18: { py: 16, res: 10 }, 19: { py: 18, res: 11 }, 20: { py: 8, res: 5 }
 };
 
-// --- KONSTANTA FILTER BIDANG ---
 const bidangFilters = {
   "Semua Bidang": [],
   "Bagian Umum": [1, 13, 14, 15, 20],
@@ -232,7 +228,6 @@ const App = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // State untuk Fitur AI Enhance
   const [enhanceModalConfig, setEnhanceModalConfig] = useState({
       isOpen: false,
       field: null,
@@ -403,26 +398,32 @@ const App = () => {
     }
   };
 
-  // --- AI API INTEGRATION ---
+  // --- AI API INTEGRATION (MELALUI GAS PROXY) ---
   const callGeminiAPI = async (promptText) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    // Memanggil Proxy GAS, bukan URL Google secara langsung
     const payload = {
-        contents: [{ parts: [{ text: promptText }] }]
+        action: 'enhance',
+        token: activeToken, // API proxy akan mengecek token login
+        prompt: promptText
     };
-    const delays = [1000, 2000, 4000, 8000, 16000];
 
-    for (let i = 0; i < 5; i++) {
+    const delays = [1000, 2000, 4000];
+
+    for (let i = 0; i < 3; i++) {
         try {
-            const response = await fetch(url, {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
-            return result.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (result.status === 'success') {
+                return result.text;
+            } else {
+                throw new Error(result.message || "Gagal mendapatkan respon dari AI Proxy");
+            }
         } catch (error) {
-            if (i === 4) throw error;
+            if (i === 2) throw error;
             await new Promise(res => setTimeout(res, delays[i]));
         }
     }
@@ -490,7 +491,7 @@ Instruksi Wajib:
     } catch (error) {
         setEnhanceModalConfig(prev => ({
             ...prev,
-            enhancedText: "Terjadi kesalahan saat menghubungi layanan AI. Coba lagi nanti.",
+            enhancedText: "Terjadi kesalahan saat menghubungi layanan AI (" + error.message + ").",
             isLoading: false
         }));
     }
@@ -505,7 +506,6 @@ Instruksi Wajib:
     setEnhanceModalConfig({ isOpen: false, field: null, originalText: "", enhancedText: "", isLoading: false });
   };
 
-  // --- HANDLERS LAINNYA ---
   const handleDragStart = (e, riskId) => e.dataTransfer.setData("riskId", riskId);
   const handleDrop = (e, targetLocation) => {
     e.preventDefault();
@@ -619,7 +619,6 @@ Instruksi Wajib:
     return <span className="inline-flex items-center justify-center w-full px-2 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-wider border border-slate-200">Belum Diisi</span>;
   };
 
-  // --- RENDERING ---
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
@@ -639,7 +638,6 @@ Instruksi Wajib:
                     <div className="font-bold">{notification.message}</div>
                 </div>
             )}
-
             <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200">
                 <div className="p-10 flex flex-col items-center">
                     <div className="p-5 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6 flex items-center justify-center">
@@ -669,7 +667,6 @@ Instruksi Wajib:
                                 />
                             </div>
                         </div>
-
                         <button 
                             type="submit"
                             disabled={isLoading}
@@ -678,7 +675,6 @@ Instruksi Wajib:
                             {isLoading ? <div className="w-5 h-5"><IconLoader /></div> : "Masuk Aplikasi"}
                         </button>
                     </form>
-
                     <div className="mt-8 pt-6 border-t border-slate-100 w-full text-center">
                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
                             BIDANG KIHI DJKN PAPABARUKU v1.1
@@ -715,14 +711,12 @@ Instruksi Wajib:
         }
       `}</style>
 
-      {/* NOTIFICATION TOAST */}
       {notification && (
         <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
             <div className="font-bold">{notification.message}</div>
         </div>
       )}
 
-      {/* LOADING OVERLAY (Simpan) */}
       {isLoading && (
         <div className="fixed inset-0 z-[200] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center flex-col gap-4 text-white">
             <div className="w-12 h-12"><IconLoader /></div>
@@ -730,7 +724,6 @@ Instruksi Wajib:
         </div>
       )}
 
-      {/* LOADING OVERLAY (Generate Slide) */}
       {isGenerating && (
         <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4 text-white p-8 text-center">
             <div className="w-16 h-16 text-indigo-400"><IconLoader /></div>
@@ -739,7 +732,6 @@ Instruksi Wajib:
         </div>
       )}
 
-      {/* LOGOUT BUTTON */}
       <button 
         onClick={() => {
             setIsAuthenticated(false);
@@ -753,7 +745,6 @@ Instruksi Wajib:
         <div className="w-6 h-6"><IconLogOut /></div>
       </button>
 
-      {/* Main Container */}
       <div className="w-full max-w-7xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 mb-10 print-area relative">
         <div className="bg-white p-8 border-b border-slate-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
@@ -779,26 +770,21 @@ Instruksi Wajib:
                 <div className="w-4 h-4"><IconMonitorPlay /></div> 
                 {isGenerating ? "Memproses..." : "Generate Slide"}
               </button>
-
               <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95">
                 <div className="w-4 h-4"><IconPrinter /></div> Cetak PDF
               </button>
-
               <div className="relative flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
                 <div className="w-4 h-4 text-indigo-500"><IconCalendar /></div>
                 <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-700 outline-none cursor-pointer">
                   {periods.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-
               <button onClick={() => setLikelihoodModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-emerald-200">
                 <div className="w-4 h-4"><IconFileText /></div> Kriteria Kemungkinan
               </button>
-              
               <button onClick={() => setImpactModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-blue-200">
                 <div className="w-4 h-4"><IconFileText /></div> Kriteria Dampak
               </button>
-              
               <button onClick={resetPositions} className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-200 active:scale-95">
                 <div className="w-4 h-4"><IconRotateCcw /></div> Reset Posisi
               </button>
@@ -806,7 +792,6 @@ Instruksi Wajib:
           </div>
         </div>
 
-        {/* --- DAFTAR RISIKO BELUM TERPLOT (POOL AREA) --- */}
         <div className="bg-slate-50/50 p-8 border-b border-slate-200 no-print">
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
@@ -840,7 +825,6 @@ Instruksi Wajib:
           </div>
         </div>
 
-        {/* Matrix Area */}
         <div className="p-4 md:p-12 overflow-x-auto bg-white">
           <table className="w-full min-w-[1000px] table-fixed border-collapse">
             <thead>
@@ -918,7 +902,6 @@ Instruksi Wajib:
                         >
                           {bgNumbers[key]}
                         </div>
-
                         <div className="relative flex flex-wrap gap-2 justify-center items-center h-full z-20">
                           {items.map(id => {
                             const riskInfo = riskData.find(r => r.id === parseInt(id));
@@ -943,7 +926,6 @@ Instruksi Wajib:
         </div>
       </div>
 
-      {/* --- TABEL DAFTAR KEJADIAN RISIKO --- */}
       <div className="w-full max-w-7xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 p-8 print-area mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
@@ -952,7 +934,6 @@ Instruksi Wajib:
             </div>
             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Daftar Kejadian Risiko & Besaran Per Periode</h2>
           </div>
-
           <div className="relative flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 no-print">
              <div className="w-4 h-4 text-indigo-500"><IconFilter /></div>
              <select 
@@ -1043,9 +1024,6 @@ Instruksi Wajib:
         </div>
       </div>
 
-      {/* --- MODALS --- */}
-      
-      {/* Modal Kriteria Kemungkinan & Dampak (Dipersingkat agar tidak kepanjangan di source code) */}
       <Modal isOpen={isLikelihoodModalOpen} onClose={() => setLikelihoodModalOpen(false)} title="Kriteria Kemungkinan Terjadinya Risiko">
           <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Kemungkinan ditampilkan secara lengkap sesuai standar...</div>
       </Modal>
@@ -1054,7 +1032,6 @@ Instruksi Wajib:
           <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Dampak ditampilkan secara lengkap sesuai standar...</div>
       </Modal>
 
-      {/* Modal Detail Risiko (Daftar Kejadian) */}
       <Modal isOpen={!!selectedRiskDetail} onClose={handleCloseRiskDetail} title={`Detail Pengelolaan Risiko - ${selectedPeriod}`}>
         {selectedRiskDetail && (
            <div className="space-y-6 pb-2">
@@ -1064,8 +1041,6 @@ Instruksi Wajib:
               </div>
               
               <div className="grid grid-cols-1 gap-6">
-                
-                {/* --- FIELD PENJELASAN AKTUAL --- */}
                 <div className="space-y-2 p-4 bg-slate-50 rounded-[1.5rem] border border-slate-200">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -1104,7 +1079,6 @@ Instruksi Wajib:
                   />
                 </div>
 
-                {/* --- FIELD PROYEKSI RISIKO --- */}
                 <div className="space-y-2 p-4 bg-amber-50 rounded-[1.5rem] border border-amber-100">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-black uppercase text-amber-600 tracking-wider flex items-center gap-2">
@@ -1143,7 +1117,6 @@ Instruksi Wajib:
                   />
                 </div>
 
-                {/* --- FIELD MITIGASI TERLAKSANA --- */}
                 <div className="space-y-4 p-4 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-black uppercase text-emerald-700 tracking-wider flex items-center gap-2">
@@ -1169,7 +1142,6 @@ Instruksi Wajib:
                   ))}
                 </div>
 
-                {/* --- FIELD RENCANA MITIGASI --- */}
                 <div className="space-y-4 p-4 bg-blue-50/50 rounded-[1.5rem] border border-blue-100">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-black uppercase text-blue-700 tracking-wider flex items-center gap-2">
@@ -1211,14 +1183,13 @@ Instruksi Wajib:
         )}
       </Modal>
 
-      {/* MODAL KONFIRMASI AI ENHANCEMENT */}
       <Modal isOpen={enhanceModalConfig.isOpen} onClose={closeAIEnhancement} title="Preview AI Enhancement" zIndex="z-[150]">
         <div className="space-y-6">
             {enhanceModalConfig.isLoading ? (
                 <div className="flex flex-col items-center justify-center p-12 text-indigo-500">
                     <div className="w-12 h-12 mb-4"><IconLoader /></div>
                     <p className="font-bold text-sm tracking-widest uppercase animate-pulse">Sedang Menyusun Redaksi...</p>
-                    <p className="text-xs text-slate-400 mt-2 text-center max-w-sm">AI sedang mengkaji data risiko Anda untuk menghasilkan penjelasan yang lebih profesional dan terstruktur.</p>
+                    <p className="text-xs text-slate-400 mt-2 text-center max-w-sm">AI sedang mengkaji data risiko Anda untuk menghasilkan penjelasan yang lebih profesional dan terstruktur melalui Google Apps Script.</p>
                 </div>
             ) : (
                 <>
@@ -1250,7 +1221,6 @@ Instruksi Wajib:
         </div>
       </Modal>
 
-      {/* --- VISUAL CLONE SAAT DRAG DI HP --- */}
       {draggedItemId && (
         <div 
           className="fixed pointer-events-none z-[9999]"
