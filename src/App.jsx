@@ -10,9 +10,6 @@ const IconAlertCircle = () => (
 const IconChevronRight = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
 );
-const IconRotateCcw = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 2V8H8.5"/><path d="M2.5 8C4.5 4.5 8 2.5 12 2.5C17.5 2.5 22 7 22 12.5C22 18 17.5 22.5 12 22.5C7.5 22.5 3.5 19.5 2.5 15.5"/></svg>
-);
 const IconLayoutGrid = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
 );
@@ -214,10 +211,13 @@ const App = () => {
   const [selectedBidang, setSelectedBidang] = useState("Semua Bidang");
   const [isLikelihoodModalOpen, setLikelihoodModalOpen] = useState(false);
   const [isImpactModalOpen, setImpactModalOpen] = useState(false);
-  const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
   
+  const [selectedRiskDetail, setSelectedRiskDetail] = useState(null);
   const [draggedItemId, setDraggedItemId] = useState(null);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+
+  // State baru untuk mengontrol kemunculan pop-up pengingat periode
+  const [showPeriodReminder, setShowPeriodReminder] = useState(false);
   
   const [showExplanationExample, setShowExplanationExample] = useState(false);
   const [showProjectionExample, setShowProjectionExample] = useState(false);
@@ -276,6 +276,9 @@ const App = () => {
         setActiveToken(token);
         if (data.positions) setRiskPositions(data.positions);
         if (data.details) setRiskDetailData(data.details);
+        
+        // Tampilkan pengingat periode setelah auto-login berhasil
+        setShowPeriodReminder(true);
       } else {
         localStorage.removeItem('app_token');
       }
@@ -318,6 +321,9 @@ const App = () => {
         setTimeout(() => setNotification(null), 3000);
         if (data.positions) setRiskPositions(data.positions);
         if (data.details) setRiskDetailData(data.details);
+        
+        // Tampilkan pengingat periode setelah login manual berhasil
+        setShowPeriodReminder(true);
       } else {
         setNotification({ type: 'error', message: data.message || 'Token Salah atau Ditolak Server!' });
         setTimeout(() => setNotification(null), 3000);
@@ -400,10 +406,9 @@ const App = () => {
 
   // --- AI API INTEGRATION (MELALUI GAS PROXY) ---
   const callGeminiAPI = async (promptText) => {
-    // Memanggil Proxy GAS, bukan URL Google secara langsung
     const payload = {
         action: 'enhance',
-        token: activeToken, // API proxy akan mengecek token login
+        token: activeToken, 
         prompt: promptText
     };
 
@@ -542,12 +547,6 @@ Instruksi Wajib:
         setRiskPositions(prev => ({ ...prev, [selectedPeriod]: { ...prev[selectedPeriod], [draggedItemId]: targetLocation } }));
     }
     setDraggedItemId(null);
-  };
-
-  const resetPositions = () => {
-    if(window.confirm("Apakah Anda yakin ingin mereset posisi risiko untuk periode ini? Data yang belum disimpan ke Cloud akan hilang.")) {
-        setRiskPositions(prev => ({ ...prev, [selectedPeriod]: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [i + 1, 'pool'])) }));
-    }
   };
 
   const getScoreForPeriod = (riskId, period) => {
@@ -785,9 +784,6 @@ Instruksi Wajib:
               <button onClick={() => setImpactModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-blue-200">
                 <div className="w-4 h-4"><IconFileText /></div> Kriteria Dampak
               </button>
-              <button onClick={resetPositions} className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-200 active:scale-95">
-                <div className="w-4 h-4"><IconRotateCcw /></div> Reset Posisi
-              </button>
             </div>
           </div>
         </div>
@@ -1024,12 +1020,223 @@ Instruksi Wajib:
         </div>
       </div>
 
-      <Modal isOpen={isLikelihoodModalOpen} onClose={() => setLikelihoodModalOpen(false)} title="Kriteria Kemungkinan Terjadinya Risiko">
-          <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Kemungkinan ditampilkan secara lengkap sesuai standar...</div>
+      <Modal isOpen={isLikelihoodModalOpen} onClose={() => setLikelihoodModalOpen(false)} title="Kriteria Kemungkinan Terjadinya Risiko" zIndex="z-[200]">
+          <div className="overflow-x-auto pb-4">
+            <table className="w-full border-collapse border border-slate-300 text-xs text-slate-700">
+              <thead className="bg-[#a3b159] text-white">
+                <tr>
+                  <th className="border border-slate-300 p-3 align-middle text-center" rowSpan="3">Level Kemungkinan</th>
+                  <th className="border border-slate-300 p-2 text-center" colSpan="3">Kriteria Kemungkinan</th>
+                </tr>
+                <tr>
+                  <th className="border border-slate-300 p-2 text-center" colSpan="2">kemungkinan terjadinya non low frequency event dalam 1 periode analisis</th>
+                  <th className="border border-slate-300 p-3 align-middle text-center" rowSpan="2">low frequency event</th>
+                </tr>
+                <tr>
+                  <th className="border border-slate-300 p-2 text-center">Persentase kemungkinan</th>
+                  <th className="border border-slate-300 p-2 text-center">Jumlah frekuensi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold">Hampir tidak terjadi (1)</td>
+                  <td className="border border-slate-300 p-3 text-center">p ≤ 1%</td>
+                  <td className="border border-slate-300 p-3 text-center">&lt; 2 kali dalam 12 bulan terakhir</td>
+                  <td className="border border-slate-300 p-3 text-center">≤ 1 kejadian dalam lebih dari 60 bulan terakhir</td>
+                </tr>
+                <tr className="bg-slate-50">
+                  <td className="border border-slate-300 p-3 text-center font-bold">Jarang terjadi (2)</td>
+                  <td className="border border-slate-300 p-3 text-center">1% &lt; p ≤ 10%</td>
+                  <td className="border border-slate-300 p-3 text-center">2 kali s.d. 5 kali dalam 12 bulan terakhr</td>
+                  <td className="border border-slate-300 p-3 text-center">Minimal 1 kejadian dalam 60 bulan terakhir</td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold">Kadang terjadi (3)</td>
+                  <td className="border border-slate-300 p-3 text-center">10% &lt; p ≤ 20%</td>
+                  <td className="border border-slate-300 p-3 text-center">6 s.d. 9 kali dalam 12 bulan terakhir</td>
+                  <td className="border border-slate-300 p-3 text-center">Minimal 1 kejadian dalam 36 bulan terakhir</td>
+                </tr>
+                <tr className="bg-slate-50">
+                  <td className="border border-slate-300 p-3 text-center font-bold">Sering terjadi (4)</td>
+                  <td className="border border-slate-300 p-3 text-center">20% &lt; p ≤ 50%</td>
+                  <td className="border border-slate-300 p-3 text-center">10 kali s.d. 12 kali dalam 12 bulan terakhir</td>
+                  <td className="border border-slate-300 p-3 text-center">Minimal 1 kejadian dalam 24 bulan terakhir</td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold">Hampir pasti terjadi (5)</td>
+                  <td className="border border-slate-300 p-3 text-center">p &gt; 50%</td>
+                  <td className="border border-slate-300 p-3 text-center">&gt; 12 kali dalam 12 bulan terakhir</td>
+                  <td className="border border-slate-300 p-3 text-center">Minimal 1 kejadian dalam 12 bulan terakhir</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
       </Modal>
 
-      <Modal isOpen={isImpactModalOpen} onClose={() => setImpactModalOpen(false)} title="Kriteria Dampak Risiko">
-          <div className="p-4 text-slate-500 text-sm italic">Area Kriteria Dampak ditampilkan secara lengkap sesuai standar...</div>
+      <Modal isOpen={isImpactModalOpen} onClose={() => setImpactModalOpen(false)} title="Kriteria Dampak Risiko" zIndex="z-[200]">
+          <div className="overflow-x-auto pb-4">
+            <table className="min-w-[1200px] w-full border-collapse border border-slate-300 text-[11px] text-slate-700">
+              <thead className="bg-[#a3b159] text-white text-center">
+                <tr>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Level Dampak</th>
+                  <th className="border border-slate-300 p-2" colSpan="3">Beban Keuangan Negara</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Penurunan Reputasi</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Sanksi Pidana/Perdata</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Kecelakaan Kerja</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Gangguan Terhadap Layanan Organisasi</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Proyek/Inisatif Strategis</th>
+                  <th className="border border-slate-300 p-2 align-middle" rowSpan="2">Penurunan Kinerja</th>
+                </tr>
+                <tr>
+                  <th className="border border-slate-300 p-2 font-normal">Fraud</th>
+                  <th className="border border-slate-300 p-2 font-normal">Non Fraud penerimaan</th>
+                  <th className="border border-slate-300 p-2 font-normal">Non Fraud lainnya</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold whitespace-nowrap">Tidak signifikan (1)</td>
+                  <td className="border border-slate-300 p-3 text-center">x ≤ Rp 1 Juta</td>
+                  <td className="border border-slate-300 p-3 text-center">x ≤ 1 permil</td>
+                  <td className="border border-slate-300 p-3 text-center">x ≤ 0,5 permil</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Jumlah keluhan secara langsung lisan (dapat didokumentasikan)/tertulis ke organisasi ≤ 10</li>
+                      <li>Tingkat kepercayaan stakeholder/investor sangat baik</li>
+                      <li>Tingkat kepuasan pengguna layanan sebesar 4,25 &lt; x ≤ 5 (skala 5)</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3">Administratif: tergugat adalah Pejabat Eselon IV atau pejabat yang setara, pejabat fungsional dan pejabat fungsional umum</td>
+                  <td className="border border-slate-300 p-3 text-center">ancaman fisik dan/atau psikis</td>
+                  <td className="border border-slate-300 p-3 text-center">x &lt; 15% dari jam operasional layanan harian</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Deviasi Output &lt; 1%</li>
+                      <li>Over budget &lt; 1%</li>
+                      <li>Keterlambatan penyelesaian &lt; 5%</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">X ≤ 5% dari target kinerja</td>
+                </tr>
+                <tr className="bg-slate-50">
+                  <td className="border border-slate-300 p-3 text-center font-bold whitespace-nowrap">Minor (2)</td>
+                  <td className="border border-slate-300 p-3 text-center">Rp 1 juta &lt; x ≤ Rp 10 Juta</td>
+                  <td className="border border-slate-300 p-3 text-center">1 permil &lt; x ≤ 5 permil</td>
+                  <td className="border border-slate-300 p-3 text-center">0,5 permil &lt; x ≤ 2,5 permil</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Jumlah keluhan secara langsung lisan (dapat didokumentasikan)/tertulis ke organisasi &gt; 10</li>
+                      <li>Tingkat kepercayaan stakeholder/investor baik</li>
+                      <li>Tingkat kepuasan pengguna layanan sebesar 4 &lt; x ≤ 4,25 (skala 5)</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3">Perdata : x ≤ 100 juta,<br/>Administratif: tergugat merupakan Pejabat Eselon III, atau pejabat yang setara</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Cedera fisik ringan</li>
+                      <li>gangguan kesehatan ringan</li>
+                      <li>gangguan kesehatan mental ringan</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">15% ≤ x &lt; 40% dari jam operasional layanan harian</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Deviasi Output 1% ≤ x &lt; 5%</li>
+                      <li>Over budget 1% ≤ x &lt; 5%</li>
+                      <li>Keterlambatan penyelesaian 5% ≤ x &lt; 10%</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">5% ≤ x &lt; 10% dari target kinerja</td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold whitespace-nowrap">Moderat (3)</td>
+                  <td className="border border-slate-300 p-3 text-center">Rp 10 juta &lt; x ≤ Rp 100 juta</td>
+                  <td className="border border-slate-300 p-3 text-center">5 permil &lt; x ≤ 10 permil</td>
+                  <td className="border border-slate-300 p-3 text-center">2,5 permil &lt; x ≤ 5 permil</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Pemberitaan negatif yang masif di media sosial yang bersumber dari bukan opinion leader</li>
+                      <li>Pemberitaan negatif di media massa lokal</li>
+                      <li>Tingkat kepercayaan stakeholder/investor sedang</li>
+                      <li>Tingkat kepuasan pengguna layanan sebesar 3,75 &lt; x ≤ 4 (skala 5)</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3">Pidana: ≤ 1 tahun atau tersangka/ terdakwa pejabat eselon III/IV, atau pejabat setara, pejabat fungsional dan pejabat fungsional umum.<br/>Perdata: 100 juta &lt; x ≤ 1 M<br/>Administratif: tergugat adalah Pimpinan Eselon II, atau pejabat yang setara</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Cedera fisik sedang</li>
+                      <li>gangguan kesehatan sedang</li>
+                      <li>gangguan kesehatan mental sedang</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">40% ≤ x &lt; 65% dari jam operasional layanan harian</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Deviasi Output 5% ≤ x &lt; 10%</li>
+                      <li>Over budget 5% ≤ x &lt; 10%</li>
+                      <li>Keterlambatan penyelesaian 10% ≤ x &lt; 15%</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">10% ≤ x &lt; 20% dari target kinerja</td>
+                </tr>
+                <tr className="bg-slate-50">
+                  <td className="border border-slate-300 p-3 text-center font-bold whitespace-nowrap">Signifikan (4)</td>
+                  <td className="border border-slate-300 p-3 text-center">Rp 100 juta &lt; x ≤ Rp 1 M</td>
+                  <td className="border border-slate-300 p-3 text-center">10 permil &lt; x ≤ 20 permil</td>
+                  <td className="border border-slate-300 p-3 text-center">5 permil &lt; x ≤ 10 permil</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Pemberitaan negatif yang masif di media sosial yang bersumber dari opinion leader</li>
+                      <li>Pemberitaan negatif di media massa nasional</li>
+                      <li>Tingkat kepercayaan stakeholder/investor rendah</li>
+                      <li>Tingkat kepuasan pengguna layanan sebesar 3,5 &lt; x ≤ 3,75 (skala 5)</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3">Pidana: 1 &lt; x ≤ 2 tahun atau tersangka/ terdakwa pejabat eselon II, III, pejabat lain setara;<br/><br/>Perdata: 1 M &lt; x ≤ 10 M<br/>Administratif: tergugat adalah Pimpinan Eselon I</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Cedera fisik berat</li>
+                      <li>gangguan kesehatan berat</li>
+                      <li>gangguan kesehatan mental berat</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">65 % ≤ x &lt; 80% dari jam operasional layanan harian</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Deviasi Output 10% ≤ x &lt; 20%</li>
+                      <li>Over budget 10% ≤ x &lt; 20%</li>
+                      <li>Keterlambatan penyelesaian 15% ≤ x &lt; 25%</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">20% ≤ x &lt; 25% dari target kinerja</td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-300 p-3 text-center font-bold whitespace-nowrap">Sangat Signifikan (5)</td>
+                  <td className="border border-slate-300 p-3 text-center">x &gt; Rp 1 M</td>
+                  <td className="border border-slate-300 p-3 text-center">&gt; 20 permil</td>
+                  <td className="border border-slate-300 p-3 text-center">&gt; 10 permil</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Tingkat kepercayaan stakeholder/investor sangat rendah</li>
+                      <li>pemberitaan negatif di media massa internasional</li>
+                      <li>Tingkat kepuasan pengguna layanan ≤ 3,5 (skala 5)</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3">Pidana: &gt; 2 tahun atau tersangka/ terdakwa pejabat eselon I,<br/>Perdata: &gt; 10 M</td>
+                  <td className="border border-slate-300 p-3 text-center">Kematian</td>
+                  <td className="border border-slate-300 p-3 text-center">x ≥ 80 % dari jam operasional layanan harian</td>
+                  <td className="border border-slate-300 p-3">
+                    <ul className="list-disc pl-3 space-y-1">
+                      <li>Deviasi Output 10% ≤ x &lt; 20%</li>
+                      <li>Over budget 10% ≤ x &lt; 20%</li>
+                      <li>Keterlambatan penyelesaian 15% ≤ x &lt; 25%</li>
+                    </ul>
+                  </td>
+                  <td className="border border-slate-300 p-3 text-center">x ≥ 25% dari target kinerja</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
       </Modal>
 
       <Modal isOpen={!!selectedRiskDetail} onClose={handleCloseRiskDetail} title={`Detail Pengelolaan Risiko - ${selectedPeriod}`}>
@@ -1181,6 +1388,27 @@ Instruksi Wajib:
               </div>
            </div>
         )}
+      </Modal>
+
+      {/* Modal Pengingat Pemilihan Periode */}
+      <Modal isOpen={showPeriodReminder} onClose={() => setShowPeriodReminder(false)} title="Pemberitahuan Penting" zIndex="z-[300]">
+        <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 text-indigo-500 mb-2">
+                <IconAlertCircle />
+            </div>
+            <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest">
+                Perhatian
+            </h4>
+            <p className="text-sm text-slate-600 font-medium max-w-sm leading-relaxed">
+                Sebelum melakukan pemetaan risiko atau mengisi detail, <strong className="text-indigo-600">Pastikan Anda memilih periode (Triwulan) yang benar terlebih dahulu</strong> pada dropdown di pojok kanan atas layar.
+            </p>
+            <button 
+                onClick={() => setShowPeriodReminder(false)}
+                className="mt-6 px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+            >
+                Saya Mengerti
+            </button>
+        </div>
       </Modal>
 
       <Modal isOpen={enhanceModalConfig.isOpen} onClose={closeAIEnhancement} title="Preview AI Enhancement" zIndex="z-[150]">
